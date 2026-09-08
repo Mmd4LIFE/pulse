@@ -9,6 +9,7 @@
 import type {
   AppNotification,
   AuthResponse,
+  ConnectedChannel,
   MediaItem,
   Page,
   Pulse,
@@ -211,6 +212,7 @@ export const api = {
     reply_to_id?: number;
     quote_of_id?: number;
     media_ids?: number[];
+    post_to_channel?: boolean;
   }) => request<Pulse>("/pulses", { method: "POST", body: input }),
 
   getPulse: (id: number) => request<Pulse>(`/pulses/${id}`),
@@ -241,6 +243,38 @@ export const api = {
     request<void>(`/users/${encodeURIComponent(username)}/block`, { method: "DELETE" }),
   suggestions: (limit = 5) =>
     request<UserPublic[]>(`/users/suggestions${query({ limit })}`),
+
+  // --- privacy & follow requests -----------------------------------------
+  setPrivacy: (isPrivate: boolean) =>
+    request<UserMe>("/users/me/privacy", {
+      method: "PUT",
+      body: { is_private: isPrivate },
+    }),
+
+  followRequests: (p: PageQuery = {}) =>
+    request<Page<UserPublic>>(`/users/me/follow-requests${query({ ...p })}`),
+  followRequestCount: () =>
+    request<{ count: number }>("/users/me/follow-requests/count"),
+  approveFollowRequest: (username: string) =>
+    request<void>(
+      `/users/me/follow-requests/${encodeURIComponent(username)}/approve`,
+      { method: "POST" },
+    ),
+  declineFollowRequest: (username: string) =>
+    request<void>(
+      `/users/me/follow-requests/${encodeURIComponent(username)}/decline`,
+      { method: "POST" },
+    ),
+
+  // --- connected channel --------------------------------------------------
+  myChannel: () => request<ConnectedChannel | null>("/channels/me"),
+  connectChannel: (reference: string) =>
+    request<ConnectedChannel>("/channels/me", {
+      method: "PUT",
+      body: { reference },
+    }),
+  disconnectChannel: () => request<void>("/channels/me", { method: "DELETE" }),
+  testChannel: () => request<{ message: string }>("/channels/me/test", { method: "POST" }),
 
   userPulses: (username: string, p: PageQuery = {}) =>
     request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/pulses${query({ ...p })}`),

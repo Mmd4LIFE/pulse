@@ -9,6 +9,11 @@ export interface UserSummary {
 }
 
 export interface UserPublic extends UserSummary {
+  is_private: boolean;
+  /** The caller has asked, but not yet been allowed, to follow. */
+  follow_requested: boolean;
+  /** Whether the caller may read this account's pulses at all. */
+  can_view_pulses: boolean;
   bio: string | null;
   location: string | null;
   website: string | null;
@@ -26,6 +31,7 @@ export interface UserMe extends UserPublic {
   telegram_id: number;
   language_code: string | null;
   is_telegram_premium: boolean;
+  pending_follow_requests: number;
 }
 
 export interface MediaItem {
@@ -67,6 +73,7 @@ export interface Pulse {
   is_bookmarked: boolean;
   is_mine: boolean;
   repulsed_by: UserSummary | null;
+  sent_to_channel: boolean;
 }
 
 export interface Thread {
@@ -88,7 +95,8 @@ export type NotificationType =
   | "repulse"
   | "quote"
   | "follow"
-  | "mention";
+  | "mention"
+  | "follow_request";
 
 export interface AppNotification {
   id: number;
@@ -121,4 +129,14 @@ export interface TokenPair {
 export interface AuthResponse extends TokenPair {
   user: UserMe;
   is_new_user: boolean;
+}
+
+export interface ConnectedChannel {
+  id: number;
+  chat_id: number;
+  username: string | null;
+  title: string;
+  can_post: boolean;
+  last_error: string | null;
+  last_posted_at: string | null;
 }

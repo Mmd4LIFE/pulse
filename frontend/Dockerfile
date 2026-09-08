@@ -19,6 +19,10 @@ COPY . .
 ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 
+# Named in the UI as the account to add to a channel as administrator.
+ARG NEXT_PUBLIC_BOT_USERNAME=""
+ENV NEXT_PUBLIC_BOT_USERNAME=$NEXT_PUBLIC_BOT_USERNAME
+
 RUN npm run build
 
 # --- runtime ---------------------------------------------------------------

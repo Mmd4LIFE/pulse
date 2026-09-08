@@ -13,6 +13,7 @@ import os
 os.environ.setdefault("POSTGRES_DB", "pulse_test")
 os.environ.setdefault("SECRET_KEY", "test-secret-key-that-is-long-enough-to-pass")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "123456:TEST-TOKEN")
+os.environ.setdefault("TELEGRAM_BOT_USERNAME", "pulsebot")
 os.environ.setdefault("ENVIRONMENT", "local")
 os.environ.setdefault("ALLOW_DEV_LOGIN", "true")
 os.environ.setdefault("LOG_JSON", "false")
@@ -29,6 +30,7 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool
 
+import app.db.session as db_session
 from app.core.config import settings
 from app.core.security import create_access_token
 from app.db.session import get_db
@@ -39,6 +41,13 @@ from app.models import Base, User
 # asyncpg connection cannot be handed from one loop to the next.
 TEST_ENGINE = create_async_engine(settings.SQLALCHEMY_DATABASE_URI, poolclass=NullPool)
 TestSession = async_sessionmaker(TEST_ENGINE, class_=AsyncSession, expire_on_commit=False)
+
+# Background tasks (channel delivery) open their own session rather than using
+# the request's, so they reach for the app's global sessionmaker. That one is
+# bound to a pooled engine whose connections belong to whichever event loop
+# created them, and pytest-asyncio gives each test a fresh loop. Point it at
+# the NullPool test engine so those tasks connect in the loop they run in.
+db_session.SessionLocal = TestSession
 
 ALL_TABLES = (
     "notifications, mentions, pulse_hashtags, hashtags, media, "

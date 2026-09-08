@@ -28,6 +28,9 @@ class PulseCreate(BaseModel):
     media_ids: list[int] = Field(
         default_factory=list, max_length=settings.MAX_MEDIA_PER_PULSE
     )
+    # Opt in per pulse: the composer asks "also post to @channel?" each time,
+    # so mirroring is never a silent default.
+    post_to_channel: bool = False
 
     @model_validator(mode="after")
     def _check(self) -> PulseCreate:
@@ -77,6 +80,9 @@ class PulseOut(ORMModel):
 
     # Set when this timeline entry is somebody's repost of the pulse above.
     repulsed_by: UserSummary | None = None
+
+    # Whether this pulse was mirrored into the author's channel.
+    sent_to_channel: bool = False
 
 
 class ThreadOut(BaseModel):

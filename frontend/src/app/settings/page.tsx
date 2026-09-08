@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { AppFrame } from "@/components/layout/app-frame";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserAvatar } from "@/components/pulse/user-avatar";
+import { ChannelCard } from "@/components/settings/channel-card";
+import { PrivacyCard } from "@/components/settings/privacy-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -108,7 +110,7 @@ export default function SettingsPage() {
           />
         </Field>
 
-        <Field label="Bio" hint={`${form.bio.length}/${LIMITS.bio}`}>
+        <Field label="Bio" counter={`${form.bio.length}/${LIMITS.bio}`}>
           <Textarea
             value={form.bio}
             onChange={(event) => set("bio")(event.target.value)}
@@ -139,6 +141,12 @@ export default function SettingsPage() {
           />
         </Field>
 
+        <div className="h-px bg-border" />
+        <PrivacyCard />
+
+        <div className="h-px bg-border" />
+        <ChannelCard />
+
         <div className="rounded-xl bg-secondary/50 px-4 py-3 text-xs text-muted-foreground">
           Signed in as Telegram ID {user.telegram_id}. Pulse never sees your phone
           number or messages.
@@ -151,19 +159,30 @@ export default function SettingsPage() {
 function Field({
   label,
   hint,
+  counter,
   children,
 }: {
   label: string;
+  /** Guidance, shown under the control so it can wrap freely. */
   hint?: string;
+  /** A short value pinned to the right of the label, such as "30/200". */
+  counter?: string;
   children: React.ReactNode;
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="flex items-baseline justify-between">
+      <span className="flex items-baseline justify-between gap-3">
         <span className="text-sm font-semibold">{label}</span>
-        {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
+        {counter ? (
+          <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+            {counter}
+          </span>
+        ) : null}
       </span>
       {children}
+      {hint ? (
+        <span className="block text-xs leading-relaxed text-muted-foreground">{hint}</span>
+      ) : null}
     </label>
   );
 }

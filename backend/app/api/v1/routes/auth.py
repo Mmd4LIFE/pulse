@@ -34,6 +34,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 log = get_logger(__name__)
 
 
+async def _me(db, user) -> UserMe:
+    """The caller's own profile, including the counts only they can see."""
+    out = UserMe.model_validate(user)
+    out.pending_follow_requests = await user_service.pending_request_count(db, user.id)
+    return out
+
+
 def _token_pair(user_id: int) -> dict[str, object]:
     return {
         "access_token": create_access_token(user_id),
@@ -67,7 +74,7 @@ async def login_with_telegram(payload: TelegramLoginRequest, db: DbSession) -> A
 
     return AuthResponse(
         **_token_pair(user.id),
-        user=UserMe.model_validate(user),
+        user=await _me(db, user),
         is_new_user=created,
     )
 
@@ -86,7 +93,7 @@ async def login_for_development(payload: DevLoginRequest, db: DbSession) -> Auth
     user, created = await user_service.get_or_create_from_telegram(db, telegram_user)
     return AuthResponse(
         **_token_pair(user.id),
-        user=UserMe.model_validate(user),
+        user=await _me(db, user),
         is_new_user=created,
     )
 
@@ -105,5 +112,5 @@ async def refresh_session(payload: RefreshRequest, db: DbSession) -> TokenPair:
 
 
 @router.get("/me", response_model=UserMe, status_code=status.HTTP_200_OK)
-async def read_current_user(user: CurrentUser) -> UserMe:
-    return UserMe.model_validate(user)
+async def read_current_user(user: CurrentUser, db: DbSession) -> UserMe:
+    return await _me(db, user)

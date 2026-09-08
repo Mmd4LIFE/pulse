@@ -11,7 +11,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError, PermissionDeniedError
 from app.core.telegram import TelegramUser
-from app.models import Block, Follow, Notification, NotificationType, User
+from app.models import (
+    Block,
+    Follow,
+    FollowRequest,
+    Notification,
+    NotificationType,
+    User,
+)
 from app.schemas.user import RESERVED_USERNAMES, USERNAME_RE, UserUpdate
 
 _SANITISE_RE = re.compile(r"[^A-Za-z0-9_]")
@@ -145,8 +152,13 @@ async def is_blocked_either_way(db: AsyncSession, a_id: int, b_id: int) -> bool:
     return hit is not None
 
 
-async def follow(db: AsyncSession, follower: User, followee_id: int) -> bool:
-    """Follow an account. Returns False when the edge already existed."""
+async def follow(db: AsyncSession, follower: User, followee_id: int) -> str:
+    """Follow an account, or ask to.
+
+    Returns one of ``"following"``, ``"requested"``, ``"already_following"`` or
+    ``"already_requested"``, so the caller can tell the user what actually
+    happened rather than guessing.
+    """
     if follower.id == followee_id:
         raise PermissionDeniedError("You cannot follow yourself.")
 
@@ -154,12 +166,22 @@ async def follow(db: AsyncSession, follower: User, followee_id: int) -> bool:
     if await is_blocked_either_way(db, follower.id, followee_id):
         raise PermissionDeniedError("You cannot follow this account.")
 
+    if followee.is_private:
+        already = await db.scalar(
+            select(Follow.follower_id).where(
+                Follow.follower_id == follower.id, Follow.followee_id == followee_id
+            )
+        )
+        if already is not None:
+            return "already_following"
+        return await request_follow(db, follower, followee)
+
     db.add(Follow(follower_id=follower.id, followee_id=followee_id))
     try:
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        return False
+        return "already_following"
 
     await db.execute(
         update(User)
@@ -179,18 +201,163 @@ async def follow(db: AsyncSession, follower: User, followee_id: int) -> bool:
         )
     )
     await db.commit()
+    return "following"
+
+
+async def request_follow(db: AsyncSession, requester: User, target: User) -> str:
+    """Record a pending request to follow a protected account."""
+    db.add(FollowRequest(requester_id=requester.id, target_id=target.id))
+    try:
+        await db.flush()
+    except IntegrityError:
+        # The request was already pending.
+        await db.rollback()
+        return "already_requested"
+
+    db.add(
+        Notification(
+            recipient_id=target.id,
+            actor_id=requester.id,
+            type=NotificationType.FOLLOW_REQUEST,
+        )
+    )
+    await db.commit()
+    return "requested"
+
+
+async def has_pending_request(db: AsyncSession, requester_id: int, target_id: int) -> bool:
+    hit = await db.scalar(
+        select(FollowRequest.requester_id).where(
+            FollowRequest.requester_id == requester_id,
+            FollowRequest.target_id == target_id,
+        )
+    )
+    return hit is not None
+
+
+async def list_follow_requests(
+    db: AsyncSession, target: User, limit: int, cursor: int | None
+) -> list[User]:
+    """Accounts waiting to be let in, newest first."""
+    stmt = (
+        select(User)
+        .join(FollowRequest, FollowRequest.requester_id == User.id)
+        .where(FollowRequest.target_id == target.id, User.is_active.is_(True))
+        .order_by(User.id.desc())
+        .limit(limit)
+    )
+    if cursor:
+        stmt = stmt.where(User.id < cursor)
+    return list((await db.scalars(stmt)).all())
+
+
+async def pending_request_count(db: AsyncSession, target_id: int) -> int:
+    return (
+        await db.scalar(
+            select(func.count())
+            .select_from(FollowRequest)
+            .where(FollowRequest.target_id == target_id)
+        )
+    ) or 0
+
+
+async def _approve(db: AsyncSession, requester_id: int, target_id: int) -> bool:
+    """Turn one pending request into a follow. Caller commits."""
+    removed = await db.execute(
+        delete(FollowRequest).where(
+            FollowRequest.requester_id == requester_id,
+            FollowRequest.target_id == target_id,
+        )
+    )
+    if removed.rowcount == 0:
+        return False
+
+    db.add(Follow(follower_id=requester_id, followee_id=target_id))
+    try:
+        await db.flush()
+    except IntegrityError:
+        # Already following; the request was stale. Dropping it is enough.
+        await db.rollback()
+        return False
+
+    await db.execute(
+        update(User)
+        .where(User.id == requester_id)
+        .values(following_count=User.following_count + 1)
+    )
+    await db.execute(
+        update(User)
+        .where(User.id == target_id)
+        .values(followers_count=User.followers_count + 1)
+    )
+    db.add(
+        Notification(
+            recipient_id=requester_id,
+            actor_id=target_id,
+            type=NotificationType.FOLLOW,
+        )
+    )
     return True
 
 
+async def approve_follow_request(db: AsyncSession, target: User, requester_id: int) -> bool:
+    approved = await _approve(db, requester_id, target.id)
+    await db.commit()
+    return approved
+
+
+async def decline_follow_request(db: AsyncSession, target: User, requester_id: int) -> bool:
+    removed = await db.execute(
+        delete(FollowRequest).where(
+            FollowRequest.requester_id == requester_id,
+            FollowRequest.target_id == target.id,
+        )
+    )
+    await db.commit()
+    return (removed.rowcount or 0) > 0
+
+
+async def set_private(db: AsyncSession, user: User, private: bool) -> User:
+    """Protect or unprotect an account.
+
+    Existing followers keep their access either way. Opening an account up
+    admits everyone already waiting, since the gate they were queued behind is
+    gone.
+    """
+    if user.is_private == private:
+        return user
+
+    user.is_private = private
+    if not private:
+        pending = (
+            await db.scalars(
+                select(FollowRequest.requester_id).where(FollowRequest.target_id == user.id)
+            )
+        ).all()
+        for requester_id in pending:
+            await _approve(db, requester_id, user.id)
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
 async def unfollow(db: AsyncSession, follower: User, followee_id: int) -> bool:
+    """Unfollow, or withdraw a request that was never approved."""
     result = await db.execute(
         delete(Follow).where(
             Follow.follower_id == follower.id, Follow.followee_id == followee_id
         )
     )
     if result.rowcount == 0:
-        await db.rollback()
-        return False
+        withdrawn = await db.execute(
+            delete(FollowRequest).where(
+                FollowRequest.requester_id == follower.id,
+                FollowRequest.target_id == followee_id,
+            )
+        )
+        await db.commit()
+        return (withdrawn.rowcount or 0) > 0
 
     await db.execute(
         update(User)
@@ -217,6 +384,20 @@ async def block(db: AsyncSession, blocker: User, blocked_id: int) -> bool:
     except IntegrityError:
         await db.rollback()
         return False
+
+    # A block clears any pending request as well as the live edges.
+    await db.execute(
+        delete(FollowRequest).where(
+            (
+                (FollowRequest.requester_id == blocker.id)
+                & (FollowRequest.target_id == blocked_id)
+            )
+            | (
+                (FollowRequest.requester_id == blocked_id)
+                & (FollowRequest.target_id == blocker.id)
+            )
+        )
+    )
 
     # A block tears down the follow edges in both directions.
     for a, b in ((blocker.id, blocked_id), (blocked_id, blocker.id)):

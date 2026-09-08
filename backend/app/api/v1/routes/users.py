@@ -5,19 +5,77 @@ from __future__ import annotations
 from fastapi import APIRouter
 
 from app.api.deps import CurrentUser, DbSession, OptionalUser, Paging
-from app.schemas.common import Message, Page
+from app.core.errors import PermissionDeniedError
+from app.schemas.common import CountResponse, Message, Page
 from app.schemas.pulse import PulseOut
-from app.schemas.user import UserMe, UserPublic, UserUpdate
+from app.schemas.user import PrivacyUpdate, UserMe, UserPublic, UserUpdate
 from app.services import serializers, timelines
 from app.services import users as user_service
+from app.services.visibility import may_view_account
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+async def _me(db, user) -> UserMe:
+    out = UserMe.model_validate(user)
+    out.pending_follow_requests = await user_service.pending_request_count(db, user.id)
+    return out
 
 
 @router.patch("/me", response_model=UserMe)
 async def update_me(payload: UserUpdate, user: CurrentUser, db: DbSession) -> UserMe:
     updated = await user_service.update_profile(db, user, payload)
-    return UserMe.model_validate(updated)
+    return await _me(db, updated)
+
+
+@router.put("/me/privacy", response_model=UserMe)
+async def set_privacy(payload: PrivacyUpdate, user: CurrentUser, db: DbSession) -> UserMe:
+    """Protect the account, or open it up again.
+
+    Opening it up admits everyone already waiting, since the gate they were
+    queued behind no longer exists.
+    """
+    updated = await user_service.set_private(db, user, payload.is_private)
+    return await _me(db, updated)
+
+
+@router.get("/me/follow-requests", response_model=Page[UserPublic])
+async def list_follow_requests(
+    user: CurrentUser, db: DbSession, paging: Paging
+) -> Page[UserPublic]:
+    rows = await user_service.list_follow_requests(
+        db, user, paging.limit + 1, paging.cursor
+    )
+    items = rows[: paging.limit]
+    has_more = len(rows) > paging.limit
+    return Page(
+        items=await serializers.serialize_users(db, items, user.id),
+        next_cursor=str(items[-1].id) if has_more and items else None,
+        has_more=has_more,
+    )
+
+
+@router.get("/me/follow-requests/count", response_model=CountResponse)
+async def count_follow_requests(user: CurrentUser, db: DbSession) -> CountResponse:
+    return CountResponse(count=await user_service.pending_request_count(db, user.id))
+
+
+@router.post("/me/follow-requests/{username}/approve", response_model=Message)
+async def approve_follow_request(
+    username: str, user: CurrentUser, db: DbSession
+) -> Message:
+    requester = await user_service.get_by_username(db, username)
+    done = await user_service.approve_follow_request(db, user, requester.id)
+    return Message(message="Approved." if done else "No pending request.")
+
+
+@router.post("/me/follow-requests/{username}/decline", response_model=Message)
+async def decline_follow_request(
+    username: str, user: CurrentUser, db: DbSession
+) -> Message:
+    requester = await user_service.get_by_username(db, username)
+    done = await user_service.decline_follow_request(db, user, requester.id)
+    return Message(message="Declined." if done else "No pending request.")
 
 
 @router.get("/suggestions", response_model=list[UserPublic])
@@ -37,8 +95,15 @@ async def read_profile(username: str, db: DbSession, viewer: OptionalUser) -> Us
 @router.post("/{username}/follow", response_model=Message)
 async def follow_user(username: str, user: CurrentUser, db: DbSession) -> Message:
     target = await user_service.get_by_username(db, username)
-    created = await user_service.follow(db, user, target.id)
-    return Message(message="Followed." if created else "Already following.")
+    outcome = await user_service.follow(db, user, target.id)
+    return Message(
+        message={
+            "following": "Followed.",
+            "requested": "Follow request sent.",
+            "already_following": "Already following.",
+            "already_requested": "Request already sent.",
+        }[outcome]
+    )
 
 
 @router.delete("/{username}/follow", response_model=Message)
@@ -67,6 +132,7 @@ async def list_followers(
     username: str, db: DbSession, viewer: OptionalUser, paging: Paging
 ) -> Page[UserPublic]:
     target = await user_service.get_by_username(db, username)
+    await _gate(db, target, viewer)
     rows = await user_service.list_followers(db, target.id, paging.limit + 1, paging.cursor)
     items = rows[: paging.limit]
     has_more = len(rows) > paging.limit
@@ -82,6 +148,7 @@ async def list_following(
     username: str, db: DbSession, viewer: OptionalUser, paging: Paging
 ) -> Page[UserPublic]:
     target = await user_service.get_by_username(db, username)
+    await _gate(db, target, viewer)
     rows = await user_service.list_following(db, target.id, paging.limit + 1, paging.cursor)
     items = rows[: paging.limit]
     has_more = len(rows) > paging.limit
@@ -90,6 +157,15 @@ async def list_following(
         next_cursor=str(items[-1].id) if has_more and items else None,
         has_more=has_more,
     )
+
+
+async def _gate(db, target, viewer) -> None:
+    """Refuse a protected account's pulses to anyone it has not admitted."""
+    if not await may_view_account(db, target, viewer.id if viewer else None):
+        raise PermissionDeniedError(
+            "This account is protected. Follow it to see its pulses.",
+            code="protected_account",
+        )
 
 
 async def _page(db, rows, cursor, viewer) -> Page[PulseOut]:
@@ -105,6 +181,7 @@ async def user_pulses(
     username: str, db: DbSession, viewer: OptionalUser, paging: Paging
 ) -> Page[PulseOut]:
     target = await user_service.get_by_username(db, username)
+    await _gate(db, target, viewer)
     rows, cursor = await timelines.user_pulses(
         db, target, viewer, paging.limit, paging.cursor
     )
@@ -116,6 +193,7 @@ async def user_replies(
     username: str, db: DbSession, viewer: OptionalUser, paging: Paging
 ) -> Page[PulseOut]:
     target = await user_service.get_by_username(db, username)
+    await _gate(db, target, viewer)
     rows, cursor = await timelines.user_replies(
         db, target, viewer, paging.limit, paging.cursor
     )
@@ -127,6 +205,7 @@ async def user_media(
     username: str, db: DbSession, viewer: OptionalUser, paging: Paging
 ) -> Page[PulseOut]:
     target = await user_service.get_by_username(db, username)
+    await _gate(db, target, viewer)
     rows, cursor = await timelines.user_media(
         db, target, viewer, paging.limit, paging.cursor
     )
@@ -138,6 +217,7 @@ async def user_likes(
     username: str, db: DbSession, viewer: OptionalUser, paging: Paging
 ) -> Page[PulseOut]:
     target = await user_service.get_by_username(db, username)
+    await _gate(db, target, viewer)
     rows, cursor = await timelines.user_likes(
         db, target, viewer, paging.limit, paging.cursor
     )

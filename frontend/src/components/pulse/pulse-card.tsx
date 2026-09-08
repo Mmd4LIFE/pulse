@@ -1,6 +1,6 @@
 "use client";
 
-import { MoreHorizontal, Repeat2, Trash2, UserX } from "lucide-react";
+import { Megaphone, MoreHorizontal, Repeat2, Trash2, UserX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -106,6 +106,12 @@ export function PulseCard({
                         {relativeTime(pulse.created_at)}
                       </time>
                     </>
+                  ) : null}
+                  {pulse.sent_to_channel && pulse.is_mine ? (
+                    <Megaphone
+                      className="h-3.5 w-3.5 shrink-0"
+                      aria-label="Also posted to your channel"
+                    />
                   ) : null}
                 </span>
               </div>

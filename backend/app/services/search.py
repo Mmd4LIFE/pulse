@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Hashtag, Pulse, User
 from app.services import users as user_service
 from app.services.pulses import _load_options
+from app.services.visibility import restrict_to_visible
 
 
 def _escape_like(term: str) -> str:
@@ -71,6 +72,7 @@ async def search_pulses(
         hidden = await user_service.blocked_ids(db, viewer.id)
         if hidden:
             stmt = stmt.where(Pulse.author_id.not_in(hidden))
+    stmt = restrict_to_visible(stmt, viewer.id if viewer else None)
     if cursor:
         stmt = stmt.where(Pulse.id < cursor)
 

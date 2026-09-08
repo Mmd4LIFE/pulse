@@ -38,7 +38,7 @@ Validation failures add a `details` array of `{ field, message }`.
 
 | Method | Path | Notes |
 |---|---|---|
-| `POST` | `/pulses` | `{ content, reply_to_id?, quote_of_id?, media_ids? }`. A pulse cannot be both a reply and a quote. |
+| `POST` | `/pulses` | `{ content, reply_to_id?, quote_of_id?, media_ids?, post_to_channel? }`. A pulse cannot be both a reply and a quote. `post_to_channel` mirrors it into the author's connected channel, after the response. |
 | `GET` | `/pulses/{id}` | |
 | `GET` | `/pulses/{id}/thread` | Ancestors, the pulse, and its direct replies. |
 | `GET` | `/pulses/{id}/replies` | Paged, oldest first. |
@@ -71,6 +71,29 @@ rather than failing or double-counting.
 | `GET` | `/users/{username}/followers` · `/following` | |
 | `GET` | `/users/{username}/pulses` · `/replies` · `/media` · `/likes` | |
 | `GET` | `/users/suggestions` | |
+| `PUT` | `/users/me/privacy` | `{ "is_private": true }`. Going public approves everyone waiting. |
+| `GET` | `/users/me/follow-requests` · `/count` | Pending requests to follow you. |
+| `POST` | `/users/me/follow-requests/{username}/approve` · `/decline` | |
+
+Following a protected account returns `"Follow request sent."` rather than
+following it. Its pulses, followers and following lists answer `403`
+`protected_account` until the request is approved; `UserPublic.can_view_pulses`
+says up front whether they are readable, so the app can show a lock instead of
+provoking the error.
+
+## Channels
+
+| Method | Path | Notes |
+|---|---|---|
+| `GET` | `/channels/me` | The connected channel, or `null`. |
+| `PUT` | `/channels/me` | `{ "reference": "@yourchannel" }`. Also accepts a t.me link or a `-100…` id. |
+| `DELETE` | `/channels/me` | |
+| `POST` | `/channels/me/test` | Posts a short message to prove the link works. |
+
+Connecting verifies through the Bot API that the channel exists, is a channel
+rather than a group, and that the bot is an administrator there with
+`can_post_messages`. Anything else fails at connection time rather than
+silently dropping posts later. A channel can belong to one account only.
 
 ## Search and notifications
 

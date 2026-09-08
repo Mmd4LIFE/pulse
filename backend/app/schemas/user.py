@@ -49,6 +49,7 @@ class UserPublic(ORMModel):
     avatar_url: str | None = None
     banner_url: str | None = None
     is_verified: bool = False
+    is_private: bool = False
     followers_count: int = 0
     following_count: int = 0
     pulses_count: int = 0
@@ -58,12 +59,17 @@ class UserPublic(ORMModel):
     is_following: bool = False
     is_followed_by: bool = False
     is_blocked: bool = False
+    # A protected account the caller has asked, but not yet been allowed, to follow.
+    follow_requested: bool = False
+    # Whether the caller may read this account's pulses at all.
+    can_view_pulses: bool = True
 
 
 class UserMe(UserPublic):
     telegram_id: int
     language_code: str | None = None
     is_telegram_premium: bool = False
+    pending_follow_requests: int = 0
 
 
 class UserSummary(ORMModel):
@@ -74,6 +80,10 @@ class UserSummary(ORMModel):
     display_name: str
     avatar_url: str | None = None
     is_verified: bool = False
+
+
+class PrivacyUpdate(ORMModel):
+    is_private: bool
 
 
 class UserUpdate(ORMModel):

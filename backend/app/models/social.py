@@ -37,6 +37,33 @@ class Follow(Base):
     )
 
 
+class FollowRequest(Base):
+    """A pending request to follow a protected account.
+
+    Kept apart from ``follows`` on purpose: every timeline query treats a row in
+    ``follows`` as an approved edge, so a pending request can never leak content
+    by being mistaken for one.
+    """
+
+    __tablename__ = "follow_requests"
+
+    requester_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    target_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    __table_args__ = (
+        CheckConstraint("requester_id <> target_id", name="no_self_request"),
+        # The owner's pending list, newest first.
+        Index("ix_follow_requests_target_created", "target_id", "created_at"),
+    )
+
+
 class Like(Base):
     __tablename__ = "likes"
 

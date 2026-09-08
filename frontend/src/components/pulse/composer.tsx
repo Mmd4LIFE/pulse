@@ -2,8 +2,8 @@
 
 /** The write surface, used for new pulses, replies and quotes alike. */
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Check, ImagePlus, Loader2, Megaphone, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 
@@ -41,8 +41,19 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
   const [content, setContent] = React.useState("");
   const [media, setMedia] = React.useState<MediaItem[]>([]);
   const [uploading, setUploading] = React.useState(false);
+  const [toChannel, setToChannel] = React.useState(false);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const textarea = React.useRef<HTMLTextAreaElement>(null);
+
+  // A connected channel turns on the per-pulse confirmation below.
+  const channel = useQuery({
+    queryKey: ["channel"],
+    queryFn: () => api.myChannel(),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+  // Mirroring only makes sense for a pulse of your own, not a reply.
+  const canMirror = Boolean(channel.data?.can_post) && !replyTo;
 
   const remaining = MAX_LENGTH - content.length;
   const canPost = (content.trim().length > 0 || media.length > 0) && remaining >= 0;
@@ -73,10 +84,12 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
         reply_to_id: replyTo?.id,
         quote_of_id: quoteOf?.id,
         media_ids: media.map((m) => m.id),
+        post_to_channel: canMirror && toChannel,
       }),
     onSuccess: (pulse) => {
       haptics.notify("success");
-      toast.success(replyTo ? "Reply sent." : "Pulse sent.");
+      const where = canMirror && toChannel ? " and to your channel" : "";
+      toast.success(replyTo ? "Reply sent." : `Pulse sent${where}.`);
       onOpenChange(false);
       void queryClient.invalidateQueries();
       onPosted?.(pulse);
@@ -184,6 +197,43 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
               className="mt-0.5 line-clamp-3 text-[13px] text-muted-foreground"
             />
           </div>
+        ) : null}
+
+        {canMirror ? (
+          <button
+            type="button"
+            onClick={() => {
+              haptics.select();
+              setToChannel((on) => !on);
+            }}
+            aria-pressed={toChannel}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left transition-colors",
+              toChannel
+                ? "border-primary/40 bg-primary/10"
+                : "border-border hover:bg-accent/40",
+            )}
+          >
+            <span
+              className={cn(
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors",
+                toChannel
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-muted-foreground/40",
+              )}
+            >
+              {toChannel ? <Check className="h-3.5 w-3.5" /> : null}
+            </span>
+            <Megaphone className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1 truncate text-sm">
+              Also post in{" "}
+              <span className="font-semibold">
+                {channel.data?.username
+                  ? `@${channel.data.username}`
+                  : channel.data?.title}
+              </span>
+            </span>
+          </button>
         ) : null}
 
         <DialogFooter className="items-center justify-between">

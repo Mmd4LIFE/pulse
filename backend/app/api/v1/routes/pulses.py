@@ -2,15 +2,26 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, BackgroundTasks, status
 
 from app.api.deps import CurrentUser, DbSession, OptionalUser, Paging
+from app.core.errors import PermissionDeniedError
 from app.schemas.common import Message, Page
 from app.schemas.pulse import PulseCreate, PulseOut, ThreadOut
+from app.services import channels as channel_service
 from app.services import pulses as pulse_service
 from app.services import serializers, timelines
+from app.services.visibility import may_view_pulse
 
 router = APIRouter(prefix="/pulses", tags=["pulses"])
+
+
+async def _gate(db, pulse, viewer) -> None:
+    """Refuse a protected account's pulse to anyone it has not admitted."""
+    if not await may_view_pulse(db, pulse, viewer.id if viewer else None):
+        raise PermissionDeniedError(
+            "This pulse belongs to a protected account.", code="protected_account"
+        )
 
 
 async def _one(db, pulse, viewer) -> PulseOut:
@@ -19,14 +30,28 @@ async def _one(db, pulse, viewer) -> PulseOut:
 
 
 @router.post("", response_model=PulseOut, status_code=status.HTTP_201_CREATED)
-async def create_pulse(payload: PulseCreate, user: CurrentUser, db: DbSession) -> PulseOut:
+async def create_pulse(
+    payload: PulseCreate,
+    user: CurrentUser,
+    db: DbSession,
+    background: BackgroundTasks,
+) -> PulseOut:
     pulse = await pulse_service.create_pulse(db, user, payload)
+
+    # Mirroring is opt-in per pulse and runs after the response, so a slow or
+    # failing Telegram call never delays or fails the post itself.
+    if payload.post_to_channel:
+        channel = await channel_service.get_for(db, user.id)
+        if channel is not None:
+            background.add_task(channel_service.deliver_in_background, pulse.id, user.id)
+
     return await _one(db, pulse, user)
 
 
 @router.get("/{pulse_id}", response_model=PulseOut)
 async def read_pulse(pulse_id: int, db: DbSession, viewer: OptionalUser) -> PulseOut:
     pulse = await pulse_service.get_pulse(db, pulse_id)
+    await _gate(db, pulse, viewer)
     return await _one(db, pulse, viewer)
 
 
@@ -36,6 +61,7 @@ async def read_thread(
 ) -> ThreadOut:
     """The pulse, the chain of replies above it, and its direct replies."""
     pulse = await pulse_service.get_pulse(db, pulse_id)
+    await _gate(db, pulse, viewer)
     ancestors = await timelines.ancestors_of(db, pulse)
     replies, cursor = await timelines.replies_to(
         db, pulse_id, viewer, paging.limit, paging.cursor
@@ -54,7 +80,7 @@ async def read_thread(
 async def read_replies(
     pulse_id: int, db: DbSession, viewer: OptionalUser, paging: Paging
 ) -> Page[PulseOut]:
-    await pulse_service.get_pulse(db, pulse_id)
+    await _gate(db, await pulse_service.get_pulse(db, pulse_id), viewer)
     rows, cursor = await timelines.replies_to(
         db, pulse_id, viewer, paging.limit, paging.cursor
     )

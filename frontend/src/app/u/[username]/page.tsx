@@ -3,7 +3,7 @@
 /** A profile: header, stats, and the four timeline tabs. */
 
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, Link2, MapPin, Settings } from "lucide-react";
+import { CalendarDays, Link2, Lock, MapPin, Settings } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
@@ -79,7 +79,11 @@ export default function ProfilePage() {
       }
     >
       <ProfileHeader user={user} isMe={isMe} />
-      <ProfileTabs username={user.username} />
+      {user.can_view_pulses ? (
+        <ProfileTabs username={user.username} />
+      ) : (
+        <ProtectedNotice user={user} />
+      )}
     </AppFrame>
   );
 }
@@ -100,13 +104,24 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
           />
           {!isMe ? (
             <Button
-              variant={user.is_following ? "outline" : "default"}
+              variant={user.is_following || user.follow_requested ? "outline" : "default"}
               disabled={follow.isPending}
               onClick={() =>
-                follow.mutate({ username: user.username, on: !user.is_following })
+                follow.mutate({
+                  username: user.username,
+                  // Tapping again withdraws a pending request as well as
+                  // unfollowing, so both map to the same "off" action.
+                  on: !(user.is_following || user.follow_requested),
+                })
               }
             >
-              {user.is_following ? "Following" : "Follow"}
+              {user.is_following
+                ? "Following"
+                : user.follow_requested
+                  ? "Requested"
+                  : user.is_private
+                    ? "Follow request"
+                    : "Follow"}
             </Button>
           ) : (
             <Button asChild variant="outline">
@@ -120,7 +135,18 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
             <span className="break-anywhere">{user.display_name}</span>
             {user.is_verified ? <VerifiedBadge className="h-5 w-5" /> : null}
           </h2>
-          <p className="text-sm text-muted-foreground">@{user.username}</p>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <span>@{user.username}</span>
+            {user.is_private ? (
+              <span
+                title="Protected account"
+                className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium"
+              >
+                <Lock className="h-3 w-3" />
+                Protected
+              </span>
+            ) : null}
+          </p>
           {user.is_followed_by && !isMe ? (
             <span className="mt-1.5 inline-block rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
               Follows you
@@ -173,6 +199,22 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
     </section>
   );
 }
+
+function ProtectedNotice({ user }: { user: UserPublic }) {
+  return (
+    <EmptyState
+      className="border-t border-border"
+      icon={<Lock className="h-10 w-10" />}
+      title="These pulses are protected"
+      hint={
+        user.follow_requested
+          ? `@${user.username} has your follow request. You will see their pulses once they approve it.`
+          : `Only people @${user.username} approves can see their pulses.`
+      }
+    />
+  );
+}
+
 
 function ProfileTabs({ username }: { username: string }) {
   const [tab, setTab] = React.useState("pulses");

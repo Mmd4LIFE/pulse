@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import Bookmark, Follow, Like, Media, Pulse, User
+from app.models import Bookmark, Follow, FollowRequest, Like, Media, Pulse, User
 from app.schemas.pulse import MediaOut, PulseOut, PulseRef
 from app.schemas.user import UserPublic, UserSummary
 
@@ -155,6 +155,7 @@ def to_pulse_out(
         is_bookmarked=pulse.id in ctx.bookmarked,
         is_mine=ctx.viewer_id is not None and pulse.author_id == ctx.viewer_id,
         repulsed_by=to_user_summary(repulsed_by) if repulsed_by else None,
+        sent_to_channel=pulse.sent_to_channel,
     )
 
 
@@ -176,7 +177,12 @@ async def serialize_pulses(
 
 async def serialize_user(db: AsyncSession, user: User, viewer_id: int | None) -> UserPublic:
     out = UserPublic.model_validate(user)
-    if viewer_id is None or viewer_id == user.id:
+
+    if viewer_id == user.id:
+        return out
+
+    if viewer_id is None:
+        out.can_view_pulses = not user.is_private
         return out
 
     edges = (
@@ -192,6 +198,17 @@ async def serialize_user(db: AsyncSession, user: User, viewer_id: int | None) ->
             out.is_following = True
         if followee_id == viewer_id:
             out.is_followed_by = True
+
+    if user.is_private and not out.is_following:
+        out.can_view_pulses = False
+        out.follow_requested = (
+            await db.scalar(
+                select(FollowRequest.requester_id).where(
+                    FollowRequest.requester_id == viewer_id,
+                    FollowRequest.target_id == user.id,
+                )
+            )
+        ) is not None
     return out
 
 
@@ -221,7 +238,19 @@ async def serialize_users(
             )
         ).all()
     )
+    requested = set(
+        (
+            await db.scalars(
+                select(FollowRequest.target_id).where(
+                    FollowRequest.requester_id == viewer_id,
+                    FollowRequest.target_id.in_(ids),
+                )
+            )
+        ).all()
+    )
     for out in outs:
         out.is_following = out.id in following
         out.is_followed_by = out.id in followers
+        out.follow_requested = out.id in requested
+        out.can_view_pulses = not out.is_private or out.is_following or out.id == viewer_id
     return outs

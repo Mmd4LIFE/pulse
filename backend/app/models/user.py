@@ -40,6 +40,11 @@ class User(IntPrimaryKey, Timestamped, Base):
     is_verified: Mapped[bool] = mapped_column(
         Boolean, server_default=text("false"), nullable=False
     )
+    # A protected account: only approved followers may read its pulses. New
+    # follows arrive as requests rather than taking effect immediately.
+    is_private: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False, index=True
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, server_default=text("true"), nullable=False
     )

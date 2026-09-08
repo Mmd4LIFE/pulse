@@ -1,7 +1,18 @@
 "use client";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AtSign, Bell, Heart, MessageCircle, Quote, Repeat2, UserPlus } from "lucide-react";
+import {
+  AtSign,
+  Bell,
+  Check,
+  Heart,
+  Lock,
+  MessageCircle,
+  Quote,
+  Repeat2,
+  UserPlus,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 
@@ -13,7 +24,9 @@ import { UserAvatar } from "@/components/pulse/user-avatar";
 import { Button } from "@/components/ui/button";
 import { useInfiniteFeed } from "@/hooks/use-feed";
 import { api } from "@/lib/api";
+import { haptics } from "@/lib/telegram";
 import { cn, relativeTime } from "@/lib/utils";
+import { toast } from "sonner";
 import type { AppNotification, NotificationType } from "@/types/api";
 
 const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }>> = {
@@ -23,6 +36,7 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
   quote: Quote,
   follow: UserPlus,
   mention: AtSign,
+  follow_request: Lock,
 };
 
 const TONES: Record<NotificationType, string> = {
@@ -32,6 +46,7 @@ const TONES: Record<NotificationType, string> = {
   quote: "text-primary",
   follow: "text-primary",
   mention: "text-primary",
+  follow_request: "text-amber-500",
 };
 
 const VERBS: Record<NotificationType, string> = {
@@ -41,6 +56,7 @@ const VERBS: Record<NotificationType, string> = {
   quote: "quoted your pulse",
   follow: "started following you",
   mention: "mentioned you",
+  follow_request: "asked to follow you",
 };
 
 export default function NotificationsPage() {
@@ -121,10 +137,24 @@ export default function NotificationsPage() {
 }
 
 function NotificationRow({ notification }: { notification: AppNotification }) {
+  const queryClient = useQueryClient();
   const Icon = ICONS[notification.type];
   const href = notification.pulse
     ? `/pulse/${notification.pulse.id}`
     : `/u/${notification.actor.username}`;
+
+  const decide = useMutation({
+    mutationFn: ({ approve }: { approve: boolean }) =>
+      approve
+        ? api.approveFollowRequest(notification.actor.username)
+        : api.declineFollowRequest(notification.actor.username),
+    onSuccess: (_data, { approve }) => {
+      haptics.notify("success");
+      toast.success(approve ? "Request approved." : "Request declined.");
+      void queryClient.invalidateQueries();
+    },
+    onError: () => toast.error("Could not update that request."),
+  });
 
   return (
     <Link
@@ -157,6 +187,34 @@ function NotificationRow({ notification }: { notification: AppNotification }) {
           <p className="mt-1.5 line-clamp-2 pl-9 text-sm text-muted-foreground">
             {notification.pulse.content}
           </p>
+        ) : null}
+
+        {notification.type === "follow_request" ? (
+          <div className="mt-2 flex gap-2 pl-9">
+            <Button
+              size="sm"
+              disabled={decide.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                decide.mutate({ approve: true });
+              }}
+            >
+              <Check className="h-4 w-4" />
+              Approve
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={decide.isPending}
+              onClick={(event) => {
+                event.preventDefault();
+                decide.mutate({ approve: false });
+              }}
+            >
+              <X className="h-4 w-4" />
+              Decline
+            </Button>
+          </div>
         ) : null}
       </div>
     </Link>

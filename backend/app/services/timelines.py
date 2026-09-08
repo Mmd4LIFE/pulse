@@ -24,6 +24,7 @@ from app.models import (
 from app.schemas.pulse import TrendOut
 from app.services import users as user_service
 from app.services.pulses import _load_options
+from app.services.visibility import restrict_to_visible
 
 
 def _base(viewer_hidden: Sequence[int]) -> Select:
@@ -105,7 +106,10 @@ async def explore_feed(
 ) -> tuple[list[Pulse], str | None]:
     """Recent top-level pulses from across the network."""
     hidden = await user_service.blocked_ids(db, viewer.id) if viewer else []
-    stmt = _base(hidden).where(Pulse.reply_to_id.is_(None), Pulse.repulse_of_id.is_(None))
+    stmt = restrict_to_visible(
+        _base(hidden).where(Pulse.reply_to_id.is_(None), Pulse.repulse_of_id.is_(None)),
+        viewer.id if viewer else None,
+    )
     rows = list((await db.scalars(_paginate(stmt, limit, cursor))).unique().all())
     return split_page(rows, limit)
 
@@ -155,7 +159,9 @@ async def user_likes(
 ) -> tuple[list[Pulse], str | None]:
     hidden = await user_service.blocked_ids(db, viewer.id) if viewer else []
     liked = select(Like.pulse_id).where(Like.user_id == owner.id)
-    stmt = _base(hidden).where(Pulse.id.in_(liked))
+    stmt = restrict_to_visible(
+        _base(hidden).where(Pulse.id.in_(liked)), viewer.id if viewer else None
+    )
     rows = list((await db.scalars(_paginate(stmt, limit, cursor))).unique().all())
     return split_page(rows, limit)
 
@@ -183,6 +189,7 @@ async def replies_to(
     )
     if hidden:
         stmt = stmt.where(Pulse.author_id.not_in(hidden))
+    stmt = restrict_to_visible(stmt, viewer.id if viewer else None)
     if cursor:
         stmt = stmt.where(Pulse.id > cursor)
     rows = list((await db.scalars(stmt.limit(limit + 1))).unique().all())
@@ -216,7 +223,12 @@ async def trending(
             select(Hashtag.tag, func.count(PulseHashtag.pulse_id).label("uses"))
             .join(PulseHashtag, PulseHashtag.hashtag_id == Hashtag.id)
             .join(Pulse, Pulse.id == PulseHashtag.pulse_id)
-            .where(PulseHashtag.created_at >= since, Pulse.is_deleted.is_(False))
+            .where(
+                PulseHashtag.created_at >= since,
+                Pulse.is_deleted.is_(False),
+                # A protected account's hashtags must not shape public trends.
+                Pulse.author_id.not_in(select(User.id).where(User.is_private.is_(True))),
+            )
             .group_by(Hashtag.tag)
             .order_by(func.count(PulseHashtag.pulse_id).desc(), Hashtag.tag.asc())
             .limit(limit)
@@ -237,6 +249,8 @@ async def by_hashtag(
         .join(Hashtag, Hashtag.id == PulseHashtag.hashtag_id)
         .where(Hashtag.tag == tag.lower().lstrip("#"))
     )
-    stmt = _base(hidden).where(Pulse.id.in_(tagged))
+    stmt = restrict_to_visible(
+        _base(hidden).where(Pulse.id.in_(tagged)), viewer.id if viewer else None
+    )
     rows = list((await db.scalars(_paginate(stmt, limit, cursor))).unique().all())
     return split_page(rows, limit)

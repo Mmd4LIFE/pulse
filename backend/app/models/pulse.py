@@ -88,6 +88,11 @@ class Pulse(IntPrimaryKey, Timestamped, Base):
     is_sensitive: Mapped[bool] = mapped_column(
         Boolean, server_default=text("false"), nullable=False
     )
+    # Set once the pulse has been mirrored into the author's channel. Delivery
+    # happens after the response is sent, so this is false at creation time.
+    sent_to_channel: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False
+    )
 
     author: Mapped[User] = relationship(
         back_populates="pulses", foreign_keys=[author_id], lazy="joined"

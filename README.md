@@ -21,6 +21,8 @@ No install, no signup: it opens inside Telegram and you are already signed in.
 | **Search** | People, pulses and hashtags |
 | **Notifications** | Likes, replies, repulses, quotes, follows, mentions — with an unread badge |
 | **Bookmarks** | Private saves |
+| **Private accounts** | Protect your pulses so only approved followers can read them; new follows arrive as requests |
+| **Channels** | Connect a Telegram channel you run and mirror a pulse into it, confirmed per post |
 | **Blocking** | Hides both accounts from each other everywhere |
 | **Profiles** | Editable handle, bio, location, website; Pulses / Replies / Media / Likes tabs |
 
@@ -77,7 +79,12 @@ Cloudflare Tunnel ──▶ nginx :8094 (loopback only)
 * **Reposts collapse per page.** Three people boosting the same pulse renders
   one card, not three.
 * **Soft deletes.** A deleted pulse still anchors its replies, so threads never
-  lose their shape.
+  lose their shape. Reposts retire with the pulse they point at.
+* **One visibility rule.** Protected accounts are enforced by a single SQL
+  predicate reused by every read path — explore, search, hashtags, threads,
+  likes — so there is no path left to forget. Pending follow requests live in
+  their own table, which means a request can never be mistaken for an approved
+  edge by a query that was written before the feature existed.
 
 ## Running it locally
 
@@ -151,9 +158,10 @@ annotated reference. The ones that matter most:
 make test
 ```
 
-39 tests covering signature verification and forgery, timelines and cursor
-paging, threads, the follow graph, blocking in both directions, notification
-fan-out, permissions, and search escaping. They run against a real PostgreSQL
+72 tests covering signature verification and forgery, timelines and cursor
+paging, threads, the follow graph, blocking in both directions, protected
+accounts across every read path, follow-request approval, channel connection
+and mirroring, notification fan-out, permissions, and search escaping. They run against a real PostgreSQL
 database, because the schema depends on partial indexes and boolean-to-int
 casts that another engine would not exercise.
 
