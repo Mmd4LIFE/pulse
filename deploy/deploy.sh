@@ -39,18 +39,34 @@ docker compose build
 echo "--> migrating and restarting"
 docker compose up -d --remove-orphans
 
+# The nginx config is a bind mount, so compose sees no reason to recreate the
+# container when only that file changed. Validate and reload it explicitly,
+# which also avoids dropping connections.
+echo "--> reloading nginx"
+if docker compose exec -T nginx nginx -t >/dev/null 2>&1; then
+  docker compose exec -T nginx nginx -s reload
+else
+  echo "ERROR: the nginx config is invalid; not reloading"
+  docker compose exec -T nginx nginx -t
+  exit 1
+fi
+
 echo "--> pruning dangling images"
 docker image prune -f >/dev/null
 
 echo "--> waiting for health"
+PORT=\$(grep -E '^WEB_PORT=' .env | cut -d= -f2)
 for i in \$(seq 1 30); do
-  if curl -fsS -m 5 "http://127.0.0.1:\$(grep -E '^WEB_PORT=' .env | cut -d= -f2)/health" >/dev/null 2>&1; then
+  if curl -fsS -m 5 "http://127.0.0.1:\$PORT/health" >/dev/null 2>&1; then
     echo "    healthy after \${i}s"
     break
   fi
   [ "\$i" = "30" ] && { echo "ERROR: never became healthy"; docker compose ps; docker compose logs --tail=60; exit 1; }
   sleep 1
 done
+
+echo "--> verifying"
+WEB_PORT="\$PORT" ./deploy/verify.sh
 
 docker compose ps
 REMOTE
