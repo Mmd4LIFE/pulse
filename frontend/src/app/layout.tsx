@@ -13,6 +13,14 @@ export const metadata: Metadata = {
   description: "A short-form social feed that lives inside Telegram.",
   applicationName: "Pulse",
   robots: { index: false, follow: false },
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
