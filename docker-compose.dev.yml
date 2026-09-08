@@ -1,0 +1,24 @@
+# Development overlay: publishes the API and web ports directly and enables
+# hot reload, so the browser can talk to the API without nginx in between.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  api:
+    build:
+      context: ./backend
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    environment:
+      ENVIRONMENT: local
+      DEBUG: "true"
+      LOG_JSON: "false"
+      ALLOW_DEV_LOGIN: "true"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/alembic:/app/alembic
+    ports:
+      - "127.0.0.1:8010:8000"
+
+  web:
+    ports:
+      - "127.0.0.1:3010:3000"

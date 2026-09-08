@@ -1,0 +1,148 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Two palettes, one contract. Everything in the UI reads these tokens, so the
+ * light and dark themes stay in step and Telegram's own theme can tint the
+ * surfaces underneath (see --tg-* in lib/telegram.ts).
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 213 27% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 213 27% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 213 27% 12%;
+
+    --primary: 212 96% 48%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 213 30% 96%;
+    --secondary-foreground: 213 27% 20%;
+
+    --muted: 213 30% 96%;
+    --muted-foreground: 213 12% 45%;
+
+    --accent: 213 32% 94%;
+    --accent-foreground: 213 27% 16%;
+
+    --destructive: 353 84% 52%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 213 20% 89%;
+    --input: 213 20% 89%;
+    --ring: 212 96% 48%;
+
+    --like: 350 87% 58%;
+    --repulse: 152 62% 40%;
+
+    --radius: 1rem;
+
+    /* Overwritten from Telegram's themeParams when running inside a client. */
+    --tg-viewport: 100dvh;
+    --tg-safe-top: 0px;
+    --tg-safe-bottom: 0px;
+  }
+
+  .dark {
+    --background: 210 33% 6%;
+    --foreground: 210 20% 96%;
+
+    --card: 212 28% 9%;
+    --card-foreground: 210 20% 96%;
+
+    --popover: 212 28% 10%;
+    --popover-foreground: 210 20% 96%;
+
+    --primary: 205 100% 55%;
+    --primary-foreground: 210 40% 4%;
+
+    --secondary: 212 24% 14%;
+    --secondary-foreground: 210 20% 92%;
+
+    --muted: 212 24% 14%;
+    --muted-foreground: 211 14% 60%;
+
+    --accent: 212 24% 16%;
+    --accent-foreground: 210 20% 96%;
+
+    --destructive: 353 84% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 212 20% 18%;
+    --input: 212 20% 18%;
+    --ring: 205 100% 55%;
+
+    --like: 350 92% 62%;
+    --repulse: 152 58% 46%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    /* The webview owns scrolling; the app never scrolls the document itself. */
+    overscroll-behavior-y: none;
+  }
+
+  /* Telegram's webview shows a chunky default scrollbar on desktop. */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full bg-border;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /* The single-column reading surface every screen is built inside. */
+  .app-shell {
+    @apply mx-auto flex min-h-[100dvh] w-full max-w-[600px] flex-col border-border bg-background sm:border-x;
+  }
+
+  .sticky-header {
+    @apply sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl;
+    padding-top: var(--tg-safe-top);
+  }
+
+  .tap-target {
+    @apply transition-transform active:scale-95;
+  }
+
+  /* Links inside pulse text: hashtags, mentions, URLs. */
+  .entity-link {
+    @apply text-primary hover:underline;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .safe-bottom {
+    padding-bottom: calc(var(--tg-safe-bottom) + env(safe-area-inset-bottom, 0px));
+  }
+  .break-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}

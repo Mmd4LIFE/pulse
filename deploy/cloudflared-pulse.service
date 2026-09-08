@@ -1,0 +1,14 @@
+[Unit]
+Description=cloudflared (Pulse Mini App tunnel)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+TimeoutStartSec=20
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate tunnel --protocol http2 run --token-file /etc/cloudflared/pulse-token
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target

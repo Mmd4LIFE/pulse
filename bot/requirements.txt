@@ -1,0 +1,5 @@
+# aiogram 3.31 allows pydantic <2.14, keeping the bot on the same pydantic
+# version as the API rather than pulling a second one into the stack.
+aiogram==3.31.0
+pydantic==2.10.4
+pydantic-settings==2.7.0
