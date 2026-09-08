@@ -177,6 +177,85 @@ docker run --rm -v pulse_media:/data -v /root/backups:/out alpine \
   tar czf /out/pulse-media-$(date +%F).tar.gz -C /data .
 ```
 
+## Reporting with Metabase
+
+Metabase reads the Pulse database directly, over the Docker network rather than
+a published port, so the database still listens only on loopback.
+
+### The read-only role
+
+```bash
+./deploy/create-readonly-user.sh
+```
+
+Prints a generated password once; it is not stored anywhere. The role is
+read-only three times over — granted only `SELECT`, denied `CREATE` on the
+schema, and its sessions default to read-only transactions — so a query that
+tries to write fails outright instead of depending on the grants being exactly
+right. It also carries a 120s statement timeout and a 60s
+idle-in-transaction timeout, so a heavy dashboard cannot hold connections or
+locks against the app.
+
+Default privileges are granted for future tables, so a later migration does not
+quietly leave new tables invisible to reporting.
+
+Re-running the script rotates the password.
+
+### Joining the two stacks
+
+Metabase runs from its own compose project in `/opt/metabase`. It reaches Pulse
+by joining the Pulse network as an external one:
+
+```yaml
+  metabase:
+    networks:
+      - metanet
+      - pulsenet          # added
+
+networks:
+  metanet:
+  pulsenet:
+    name: pulse_pulsenet  # created and owned by the Pulse stack
+    external: true
+```
+
+Then `docker compose up -d metabase` in `/opt/metabase`.
+
+Connection details to enter in Metabase (Admin → Databases → Add):
+
+| Field | Value |
+|---|---|
+| Display name | `Pulse` |
+| Host | `pulse-db-1` |
+| Port | `5432` |
+| Database | `pulse` |
+| Username | `pulse_readonly` |
+| Password | from the script |
+| SSL | off — the traffic never leaves the Docker bridge |
+
+`pulse-db-1` is the container name, stable because the compose project name is
+pinned to `pulse` at the top of `docker-compose.yml`. The service alias `db`
+also resolves, but is generic enough to collide if other networks are joined
+later.
+
+**The coupling to know about:** the network belongs to the Pulse stack, so
+`docker compose down` in the Pulse directory tries to remove it. Docker refuses
+while Metabase is attached, which is the safe outcome, but if the network ever
+does go missing Metabase will not start until it exists again:
+
+```bash
+cd /root/mk-projects/pulse && docker compose up -d
+cd /opt/metabase && docker compose up -d metabase
+```
+
+### What the data holds
+
+The role can read every table, `users` included — Telegram ids, handles, and
+the full text of protected accounts' pulses among them. Metabase access is
+therefore as sensitive as the database itself. If reporting only ever needs
+aggregates, a set of views plus `SELECT` on those alone, rather than on
+`public`, would be the tighter arrangement.
+
 ## Troubleshooting
 
 **The tunnel is up but the domain 502s.** The public hostname is not pointed at
