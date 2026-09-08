@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import json
 import time
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import pytest
 
@@ -19,7 +19,10 @@ def sign(fields: dict[str, str], token: str = BOT_TOKEN) -> str:
     check = "\n".join(f"{k}={v}" for k, v in sorted(fields.items()))
     secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
     digest = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
-    return urlencode({**fields, "hash": digest})
+    # quote_via=quote mirrors the browser's encodeURIComponent, which Telegram
+    # builds initData with. The default would encode a space as "+", which is
+    # form semantics and not what the signature was computed over.
+    return urlencode({**fields, "hash": digest}, quote_via=quote)
 
 
 def make_init_data(**overrides) -> str:
@@ -127,3 +130,28 @@ async def test_protected_route_requires_a_token(client) -> None:
     assert (
         await client.get("/api/v1/auth/me", headers={"Authorization": "Bearer nonsense"})
     ).status_code == 401
+
+
+def test_a_literal_plus_survives_decoding() -> None:
+    """A "+" in a signed value must stay a "+", not become a space.
+
+    initData is built with encodeURIComponent, so decoding it with form
+    semantics would alter the very bytes the signature covers.
+    """
+    signed = sign(
+        {
+            "user": json.dumps({"id": 8, "first_name": "A+B"}, separators=(",", ":")),
+            "auth_date": str(int(time.time())),
+        }
+    )
+    assert verify_init_data(signed, BOT_TOKEN).user.first_name == "A+B"
+
+
+def test_a_space_in_a_name_is_handled() -> None:
+    signed = sign(
+        {
+            "user": json.dumps({"id": 9, "first_name": "Ada Lovelace"}),
+            "auth_date": str(int(time.time())),
+        }
+    )
+    assert verify_init_data(signed, BOT_TOKEN).user.first_name == "Ada Lovelace"

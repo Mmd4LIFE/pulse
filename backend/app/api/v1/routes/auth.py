@@ -14,7 +14,12 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
 )
-from app.core.telegram import InitDataError, TelegramUser, verify_init_data
+from app.core.telegram import (
+    InitDataError,
+    TelegramUser,
+    diagnose,
+    verify_init_data,
+)
 from app.schemas.auth import (
     AuthResponse,
     DevLoginRequest,
@@ -50,7 +55,11 @@ async def login_with_telegram(payload: TelegramLoginRequest, db: DbSession) -> A
     except InitDataError as exc:
         # The reason is logged but not returned: a probing client learns only
         # that the handshake failed.
-        log.warning("initdata_rejected", reason=str(exc))
+        log.warning(
+            "initdata_rejected",
+            reason=str(exc),
+            **diagnose(payload.init_data, settings.TELEGRAM_BOT_TOKEN),
+        )
         raise AuthenticationError("Telegram sign-in could not be verified.") from exc
 
     user, created = await user_service.get_or_create_from_telegram(db, init_data.user)
