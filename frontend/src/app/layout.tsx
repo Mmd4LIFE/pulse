@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import Script from "next/script";
 import { Toaster } from "sonner";
 
 import { AppGate } from "@/components/layout/app-gate";
@@ -38,15 +37,18 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <head>
         {/*
-          The Telegram bridge must be in place before the app reads initData,
-          so it loads ahead of hydration rather than lazily.
+          A plain blocking script, deliberately not next/script: with
+          `beforeInteractive` Next queues the URL for its own loader to fetch
+          during hydration, which can leave window.Telegram undefined when the
+          app first mounts and reads initData. Loading it here guarantees the
+          bridge exists before any of our code runs.
         */}
-        <Script
-          src="https://telegram.org/js/telegram-web-app.js"
-          strategy="beforeInteractive"
-        />
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="https://telegram.org/js/telegram-web-app.js" />
+      </head>
+      <body>
         <QueryProvider>
           <AuthProvider>
             <AppGate>{children}</AppGate>

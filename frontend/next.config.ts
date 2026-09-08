@@ -24,8 +24,11 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           // Telegram renders the Mini App inside its own webview frame.
           {
+            // Telegram Web frames the Mini App, and it is served from several
+            // origins. 'self' must be quoted or it reads as a hostname.
             key: "Content-Security-Policy",
-            value: "frame-ancestors https://web.telegram.org https://telegram.org self;",
+            value:
+              "frame-ancestors 'self' https://web.telegram.org https://webk.telegram.org https://webz.telegram.org https://telegram.org;",
           },
         ],
       },

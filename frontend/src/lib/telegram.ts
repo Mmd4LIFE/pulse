@@ -18,6 +18,32 @@ export function isInsideTelegram(): boolean {
   return Boolean(app?.initData);
 }
 
+/**
+ * Resolve once the Telegram bridge has attached itself to `window`.
+ *
+ * The script is loaded synchronously in the document head, so in practice this
+ * returns immediately. It exists so that a slow or blocked bridge degrades into
+ * a short wait rather than a misdetected "not in Telegram", which in production
+ * means being bounced to a disabled dev login.
+ */
+export function waitForWebApp(timeoutMs = 3000): Promise<TelegramWebApp | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+
+  const existing = getWebApp();
+  if (existing) return Promise.resolve(existing);
+
+  return new Promise((resolve) => {
+    const started = Date.now();
+    const tick = () => {
+      const app = getWebApp();
+      if (app) return resolve(app);
+      if (Date.now() - started >= timeoutMs) return resolve(null);
+      window.setTimeout(tick, 50);
+    };
+    tick();
+  });
+}
+
 /** Prepare the webview: full height, no accidental swipe-to-close. */
 export function initialiseWebApp(): void {
   const app = getWebApp();

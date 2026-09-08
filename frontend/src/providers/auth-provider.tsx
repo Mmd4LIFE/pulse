@@ -11,7 +11,13 @@
 import * as React from "react";
 
 import { ApiError, api, tokens } from "@/lib/api";
-import { applyTelegramTheme, getWebApp, initialiseWebApp, trackViewport } from "@/lib/telegram";
+import {
+  applyTelegramTheme,
+  getWebApp,
+  initialiseWebApp,
+  trackViewport,
+  waitForWebApp,
+} from "@/lib/telegram";
 import type { UserMe } from "@/types/api";
 
 type Status = "loading" | "ready" | "error";
@@ -29,6 +35,14 @@ interface AuthContextValue {
 const AuthContext = React.createContext<AuthContextValue | null>(null);
 
 const DEV_ID_KEY = "pulse.dev_telegram_id";
+
+/** Raised when the app is opened in a plain browser in production. */
+class OutsideTelegramError extends Error {
+  constructor() {
+    super("Pulse must be opened from inside Telegram.");
+    this.name = "OutsideTelegramError";
+  }
+}
 
 /** A stable pretend Telegram id, so browser reloads keep the same dev account. */
 function developmentTelegramId(): number {
@@ -92,7 +106,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        const initData = getWebApp()?.initData;
+        // Wait for the Telegram bridge before deciding where we are: reading
+        // initData too early looks identical to "not in Telegram", and in
+        // production that path ends at a disabled dev login.
+        const app = await waitForWebApp();
+        const initData = app?.initData;
+
+        if (!initData && process.env.NODE_ENV === "production") {
+          // Being outside Telegram is a normal thing to explain, not a crash.
+          throw new OutsideTelegramError();
+        }
+
         const session = initData
           ? await api.loginWithTelegram(initData)
           : await api.loginForDevelopment(developmentTelegramId());
@@ -104,10 +128,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setStatus("ready");
       } catch (err) {
         if (cancelled) return;
-        const message =
-          err instanceof ApiError
-            ? err.message
-            : "Could not reach Pulse. Check your connection and try again.";
+        let message = "Could not reach Pulse. Check your connection and try again.";
+        if (err instanceof OutsideTelegramError) {
+          message =
+            "Pulse runs inside Telegram. Open it from @tlgrmpulse_bot — tap the menu button, or send /start.";
+        } else if (err instanceof ApiError) {
+          message = err.message;
+        }
         setError(message);
         setStatus("error");
       }
