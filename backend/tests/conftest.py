@@ -46,6 +46,28 @@ ALL_TABLES = (
 )
 
 
+def _ensure_database_exists() -> None:
+    """Create the test database if it is not there yet.
+
+    Lets the suite run against a freshly started Postgres without a manual
+    CREATE DATABASE first.
+    """
+    admin_url = settings.SYNC_DATABASE_URI.rsplit("/", 1)[0] + "/postgres"
+    admin = create_engine(admin_url, poolclass=NullPool, isolation_level="AUTOCOMMIT")
+    try:
+        with admin.connect() as conn:
+            exists = conn.execute(
+                text("SELECT 1 FROM pg_database WHERE datname = :name"),
+                {"name": settings.POSTGRES_DB},
+            ).scalar()
+            if not exists:
+                # The database name comes from settings, not from a request, and
+                # cannot be parameterised in DDL.
+                conn.execute(text(f'CREATE DATABASE "{settings.POSTGRES_DB}"'))
+    finally:
+        admin.dispose()
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _schema() -> None:
     """Build the schema once per run.
@@ -53,6 +75,7 @@ def _schema() -> None:
     Deliberately synchronous: a session-scoped async fixture would need a
     session-scoped event loop, which then conflicts with the per-test loops.
     """
+    _ensure_database_exists()
     sync_engine = create_engine(settings.SYNC_DATABASE_URI, poolclass=NullPool)
     with sync_engine.begin() as conn:
         Base.metadata.drop_all(conn)

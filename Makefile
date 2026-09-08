@@ -35,7 +35,7 @@ migrate: ## Apply database migrations
 	$(COMPOSE) run --rm migrate alembic upgrade head
 
 revision: ## Autogenerate a migration: make revision M="add table"
-	$(COMPOSE) run --rm migrate alembic revision --autogenerate -m "$(M)"
+	./backend/scripts/new-migration.sh "$(M)"
 
 shell-api: ## Open a shell in the API container
 	$(COMPOSE) exec api bash
