@@ -69,22 +69,39 @@ systemctl enable --now cloudflared-pulse
 systemctl status cloudflared-pulse --no-pager
 ```
 
-Then, **in the Cloudflare dashboard** (Zero Trust → Networks → Tunnels → this
-tunnel → Public Hostname), add:
+### Pointing the hostname at the app — the one manual step
+
+A token-managed tunnel takes its ingress rules from Cloudflare, not from disk.
+Until a public hostname is attached, `cloudflared` says so plainly at startup:
+
+```
+WRN No ingress rules were defined in provided config (if any) nor from the cli,
+    cloudflared will return 503 for all incoming HTTP requests
+```
+
+Fix it in the dashboard — **Zero Trust → Networks → Tunnels →** the Pulse
+tunnel (`df7e295c-df95-40f4-9861-90c66b4d63f7`) **→ Public Hostname → Add**:
 
 | Field | Value |
 |---|---|
 | Subdomain | `pulse` |
 | Domain | `mammad.site` |
-| Service | `HTTP` → `localhost:8094` |
+| Path | *(leave empty)* |
+| Type | `HTTP` |
+| URL | `localhost:8094` |
 
-This step cannot be done from the server: for a token-managed tunnel the
-hostname mapping lives in Cloudflare, not on disk.
+Saving this also creates the `pulse.mammad.site` DNS record, so nothing else is
+needed. `cloudflared` picks the change up within seconds — no restart:
 
-Verify from anywhere:
+```bash
+journalctl -u cloudflared-pulse -n 20 --no-pager | grep "Updated to new configuration"
+```
+
+Then verify the whole path from outside:
 
 ```bash
 curl -fsS https://pulse.mammad.site/health
+PULSE_BASE=https://pulse.mammad.site ./deploy/verify.sh
 ```
 
 ## Telling Telegram about the app
@@ -112,6 +129,15 @@ It fetches on the server, hard-resets to the branch, rebuilds, runs migrations
 dangling images, and then polls `/health` until the stack answers.
 
 The server's `.env` is never touched — secrets stay on the host.
+
+Afterwards:
+
+```bash
+./deploy/verify.sh
+```
+
+which checks liveness, readiness, the web app, the API, and that the production
+hardening is intact (docs disabled, dev login refused, `/me` unauthenticated).
 
 ## Operating it
 
