@@ -187,3 +187,75 @@ async def test_hashtags_are_indexed_and_trend(client, make_user, as_user) -> Non
 
     tagged = (await client.get("/api/v1/feed/hashtag/pulse")).json()
     assert len(tagged["items"]) == 2
+
+
+async def test_deleting_a_pulse_removes_it_from_reposters_timelines(
+    client, make_user, as_user
+) -> None:
+    """A repost must not survive its original as a blank card.
+
+    A repost carries no text, so if the original is deleted and the repost is
+    left behind, the timeline renders an author line and a counter row with
+    nothing between them.
+    """
+    author, booster, reader = (
+        await make_user("author"),
+        await make_user("booster"),
+        await make_user("reader"),
+    )
+    pulse_id = (await post(client, author, as_user, content="original")).json()["id"]
+    await client.post(f"/api/v1/pulses/{pulse_id}/repulse", headers=as_user(booster))
+    await client.post("/api/v1/users/booster/follow", headers=as_user(reader))
+
+    feed = (await client.get("/api/v1/feed/home", headers=as_user(reader))).json()
+    assert [p["content"] for p in feed["items"]] == ["original"]
+
+    await client.delete(f"/api/v1/pulses/{pulse_id}", headers=as_user(author))
+
+    feed = (await client.get("/api/v1/feed/home", headers=as_user(reader))).json()
+    assert feed["items"] == []
+
+    # ...and it is gone from the reposter's own profile too.
+    profile = (await client.get("/api/v1/users/booster/pulses")).json()
+    assert profile["items"] == []
+
+
+async def test_a_repost_of_a_deleted_pulse_never_renders_empty(
+    client, make_user, as_user, db
+) -> None:
+    """Even a repost row left behind by older data must not surface."""
+    from sqlalchemy import update
+
+    from app.models import Pulse
+
+    author, booster = await make_user("author"), await make_user("booster")
+    pulse_id = (await post(client, author, as_user, content="original")).json()["id"]
+    await client.post(f"/api/v1/pulses/{pulse_id}/repulse", headers=as_user(booster))
+
+    # Soft-delete the original directly, leaving the repost behind exactly as
+    # the pre-fix delete path did.
+    await db.execute(update(Pulse).where(Pulse.id == pulse_id).values(is_deleted=True))
+    await db.commit()
+
+    own = (
+        await client.get("/api/v1/users/booster/pulses", headers=as_user(booster))
+    ).json()
+    assert own["items"] == []
+
+    feed = (await client.get("/api/v1/feed/home", headers=as_user(booster))).json()
+    assert all(p["content"] for p in feed["items"]), "a blank pulse reached the feed"
+
+
+async def test_deleting_a_repost_leaves_the_original_alone(
+    client, make_user, as_user
+) -> None:
+    """Undoing a repost must not cascade back into the pulse it pointed at."""
+    author, booster = await make_user("author"), await make_user("booster")
+    pulse_id = (await post(client, author, as_user, content="original")).json()["id"]
+    await client.post(f"/api/v1/pulses/{pulse_id}/repulse", headers=as_user(booster))
+    await client.delete(f"/api/v1/pulses/{pulse_id}/repulse", headers=as_user(booster))
+
+    still_there = await client.get(f"/api/v1/pulses/{pulse_id}")
+    assert still_there.status_code == 200
+    assert still_there.json()["content"] == "original"
+    assert still_there.json()["repulse_count"] == 0

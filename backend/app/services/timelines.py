@@ -38,6 +38,18 @@ def _base(viewer_hidden: Sequence[int]) -> Select:
     return stmt
 
 
+def _is_orphan_repost(pulse: Pulse) -> bool:
+    """True when a repost has nothing left to point at.
+
+    Covers both a hard-deleted original and a soft-deleted one: the latter is
+    still loadable, so checking only for a missing row let deleted pulses
+    render as empty cards.
+    """
+    if not pulse.repulse_of_id:
+        return False
+    return pulse.repulse_of is None or pulse.repulse_of.is_deleted
+
+
 def _paginate(stmt: Select, limit: int, cursor: int | None) -> Select:
     if cursor:
         stmt = stmt.where(Pulse.id < cursor)
@@ -83,8 +95,7 @@ async def home_feed(
         Pulse.reply_to_id.is_(None),
     )
     rows = list((await db.scalars(_paginate(stmt, limit, cursor))).unique().all())
-    # Drop reposts whose original has since been deleted.
-    rows = [p for p in rows if not (p.repulse_of_id and p.repulse_of is None)]
+    rows = [p for p in rows if not _is_orphan_repost(p)]
     items, next_cursor = split_page(rows, limit)
     return _collapse_reposts(items), next_cursor
 
@@ -113,7 +124,7 @@ async def user_pulses(
     if not include_replies:
         stmt = stmt.where(Pulse.reply_to_id.is_(None))
     rows = list((await db.scalars(_paginate(stmt, limit, cursor))).unique().all())
-    rows = [p for p in rows if not (p.repulse_of_id and p.repulse_of is None)]
+    rows = [p for p in rows if not _is_orphan_repost(p)]
     items, next_cursor = split_page(rows, limit)
     return _collapse_reposts(items), next_cursor
 

@@ -257,6 +257,17 @@ async def delete_pulse(db: AsyncSession, user: User, pulse_id: int) -> None:
             .where(Pulse.id == pulse.repulse_of_id, Pulse.repulse_count > 0)
             .values(repulse_count=Pulse.repulse_count - 1)
         )
+
+    # Reposts carry no content of their own, so once the original is gone they
+    # would render as blank cards in every follower's timeline. Retire them
+    # with it.
+    if not pulse.repulse_of_id:
+        await db.execute(
+            update(Pulse)
+            .where(Pulse.repulse_of_id == pulse.id, Pulse.is_deleted.is_(False))
+            .values(is_deleted=True, deleted_at=pulse.deleted_at)
+        )
+
     await db.commit()
 
 
