@@ -7,6 +7,7 @@ import { Check, ImagePlus, Loader2, Megaphone, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 
+import { MentionSuggestions } from "@/components/pulse/mention-suggestions";
 import { PulseText } from "@/components/pulse/pulse-text";
 import { UserAvatar } from "@/components/pulse/user-avatar";
 import { Button } from "@/components/ui/button";
@@ -20,9 +21,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError, api } from "@/lib/api";
 import { haptics } from "@/lib/telegram";
+import { applyMention, findActiveMention, type ActiveMention } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
-import type { MediaItem, Pulse } from "@/types/api";
+import type { MediaItem, Pulse, UserSummary } from "@/types/api";
 
 const MAX_LENGTH = 280;
 const MAX_MEDIA = 4;
@@ -42,6 +44,12 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
   const [media, setMedia] = React.useState<MediaItem[]>([]);
   const [uploading, setUploading] = React.useState(false);
   const [toChannel, setToChannel] = React.useState(false);
+  const [mention, setMention] = React.useState<ActiveMention | null>(null);
+  const [mentionIndex, setMentionIndex] = React.useState(0);
+  // The mention the writer dismissed with Escape, so releasing the key does not
+  // immediately reopen the list under an unchanged caret. Typing on clears it.
+  const [dismissedMention, setDismissedMention] = React.useState<string | null>(null);
+  const mentionResults = React.useRef<UserSummary[]>([]);
   const fileInput = React.useRef<HTMLInputElement>(null);
   const textarea = React.useRef<HTMLTextAreaElement>(null);
 
@@ -102,6 +110,76 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
     },
   });
 
+  const mentionKey = (active: ActiveMention | null) =>
+    active ? `${active.start}:${active.query}` : null;
+
+  const syncMention = React.useCallback(
+    (element: HTMLTextAreaElement) => {
+      const active = findActiveMention(element.value, element.selectionStart ?? 0);
+      const key = active ? `${active.start}:${active.query}` : null;
+
+      if (key !== null && key === dismissedMention) {
+        setMention(null);
+        return;
+      }
+      if (dismissedMention !== null) setDismissedMention(null);
+
+      setMention((current) => {
+        // Arrow keys fire keyup too. Only a changed query should send the
+        // highlight back to the top, or navigating would be undone at once.
+        if (current?.query !== active?.query) setMentionIndex(0);
+        return active;
+      });
+    },
+    [dismissedMention],
+  );
+
+  const pickMention = React.useCallback(
+    (user: UserSummary) => {
+      if (!mention) return;
+      const { text, caret } = applyMention(content, mention, user.username);
+      setContent(text);
+      setMention(null);
+      haptics.select();
+
+      // Restore focus and put the caret after the inserted handle, so typing
+      // simply carries on.
+      requestAnimationFrame(() => {
+        const element = textarea.current;
+        if (!element) return;
+        element.focus();
+        element.setSelectionRange(caret, caret);
+      });
+    },
+    [content, mention],
+  );
+
+  // Stable, so the suggestion list does not re-run its reporting effect on
+  // every keystroke of the parent.
+  const onMentionResults = React.useCallback((users: UserSummary[]) => {
+    mentionResults.current = users;
+  }, []);
+
+  const onMentionKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const options = mentionResults.current;
+    if (!mention || options.length === 0) return;
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setMentionIndex((i) => (i + step + options.length) % options.length);
+      return;
+    }
+    if (event.key === "Enter" || event.key === "Tab") {
+      const chosen = options[mentionIndex];
+      if (chosen) {
+        event.preventDefault();
+        pickMention(chosen);
+      }
+      return;
+    }
+  };
+
   async function onPickFiles(event: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []).slice(0, MAX_MEDIA - media.length);
     event.target.value = "";
@@ -124,7 +202,19 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="top-[8%] max-h-[84dvh] translate-y-0 overflow-y-auto p-4" hideClose>
+      <DialogContent
+        className="top-[8%] max-h-[84dvh] translate-y-0 overflow-y-auto p-4"
+        hideClose
+        onEscapeKeyDown={(event) => {
+          // First Escape dismisses the mention list; a second one closes the
+          // composer, so a stray keypress never discards a draft.
+          if (mention) {
+            event.preventDefault();
+            setDismissedMention(mentionKey(mention));
+            setMention(null);
+          }
+        }}
+      >
         <DialogHeader className="flex-row items-center justify-between space-y-0">
           <DialogTitle className="text-base">{title}</DialogTitle>
           <button
@@ -155,12 +245,31 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
             <Textarea
               ref={textarea}
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => {
+                setContent(event.target.value);
+                syncMention(event.currentTarget);
+              }}
+              // The caret can move without the text changing, and the mention
+              // under it changes with it.
+              onKeyUp={(event) => syncMention(event.currentTarget)}
+              onClick={(event) => syncMention(event.currentTarget)}
+              onBlur={() => setMention(null)}
+              onKeyDown={onMentionKeyDown}
               placeholder={replyTo ? "Post your reply" : "What's the pulse?"}
               rows={4}
               maxLength={MAX_LENGTH + 40}
               className="min-h-[110px] py-1"
             />
+
+            {mention ? (
+              <MentionSuggestions
+                query={mention.query}
+                activeIndex={mentionIndex}
+                onHoverIndex={setMentionIndex}
+                onPick={pickMention}
+                onResults={onMentionResults}
+              />
+            ) : null}
 
             {media.length > 0 ? (
               <div className="mt-3 grid grid-cols-2 gap-2">

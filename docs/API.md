@@ -101,6 +101,7 @@ silently dropping posts later. A channel can belong to one account only.
 |---|---|---|
 | `GET` | `/search?q=` | Blended users + pulses + hashtags. |
 | `GET` | `/search/users?q=` · `/search/pulses?q=` | Paged. |
+| `GET` | `/search/mentions?q=` | Composer autocomplete. Ranked for mentions: exact handle, then accounts you follow, then reach. A bare `q=` returns the accounts you follow. |
 | `GET` | `/notifications` | `?unread_only=true`, `?kind=like&kind=reply`. |
 | `GET` | `/notifications/unread-count` | |
 | `POST` | `/notifications/read-all` | |

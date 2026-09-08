@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from app.api.deps import DbSession, OptionalUser, Paging
 from app.schemas.common import Page
 from app.schemas.pulse import PulseOut
-from app.schemas.user import UserPublic
+from app.schemas.user import UserPublic, UserSummary
 from app.services import search as search_service
 from app.services import serializers
 
@@ -76,3 +76,15 @@ async def search_pulses(
         next_cursor=cursor,
         has_more=cursor is not None,
     )
+
+
+@router.get("/mentions", response_model=list[UserSummary])
+async def suggest_mentions(
+    db: DbSession,
+    viewer: OptionalUser,
+    q: str = Query(default="", max_length=32),
+    limit: int = Query(default=6, ge=1, le=10),
+) -> list[UserSummary]:
+    """Autocomplete for the composer. Deliberately small and compact."""
+    found = await search_service.suggest_mentions(db, q, viewer, limit)
+    return [UserSummary.model_validate(u) for u in found]

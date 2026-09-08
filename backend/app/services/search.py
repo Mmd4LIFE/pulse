@@ -5,7 +5,7 @@ from __future__ import annotations
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Hashtag, Pulse, User
+from app.models import Follow, Hashtag, Pulse, User
 from app.services import users as user_service
 from app.services.pulses import _load_options
 from app.services.visibility import restrict_to_visible
@@ -93,3 +93,55 @@ async def search_hashtags(db: AsyncSession, query: str, limit: int) -> list[Hash
         .limit(limit)
     )
     return list((await db.scalars(stmt)).all())
+
+
+async def suggest_mentions(
+    db: AsyncSession, query: str, viewer: User | None, limit: int
+) -> list[User]:
+    """Accounts to offer while someone is typing an @mention.
+
+    Ranked for the composer rather than for browsing: an exact handle first,
+    then people the writer follows, then by reach. Matching is prefix-based on
+    the handle -- typing "@ma" should offer @maryam, not every account with
+    "ma" buried in its display name.
+    """
+    term = _escape_like(query.strip().lstrip("@")).lower()
+
+    if not term:
+        # A bare "@" means "who do I usually talk to": offer the accounts the
+        # writer follows rather than nothing at all.
+        if viewer is None:
+            return []
+        followed = select(Follow.followee_id).where(Follow.follower_id == viewer.id)
+        stmt = (
+            select(User)
+            .where(User.is_active.is_(True), User.id.in_(followed))
+            .order_by(User.followers_count.desc(), User.id.desc())
+            .limit(limit)
+        )
+        hidden = await user_service.blocked_ids(db, viewer.id)
+        if hidden:
+            stmt = stmt.where(User.id.not_in(hidden))
+        return list((await db.scalars(stmt)).all())
+
+    handle_prefix = func.lower(User.username).like(f"{term}%", escape="\\")
+    name_match = func.lower(User.display_name).like(f"%{term}%", escape="\\")
+
+    stmt = select(User).where(User.is_active.is_(True), or_(handle_prefix, name_match))
+
+    order = [
+        (func.lower(User.username) == term).desc(),
+        handle_prefix.desc(),
+    ]
+
+    if viewer is not None:
+        followed = select(Follow.followee_id).where(Follow.follower_id == viewer.id)
+        # People you follow are far likelier to be who you meant.
+        order.insert(1, User.id.in_(followed).desc())
+
+        hidden = await user_service.blocked_ids(db, viewer.id)
+        if hidden:
+            stmt = stmt.where(User.id.not_in(hidden))
+
+    order += [User.followers_count.desc(), User.id.asc()]
+    return list((await db.scalars(stmt.order_by(*order).limit(limit))).all())

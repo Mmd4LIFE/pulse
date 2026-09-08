@@ -19,6 +19,7 @@ import type {
   Trend,
   UserMe,
   UserPublic,
+  UserSummary,
 } from "@/types/api";
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1";
@@ -299,6 +300,8 @@ export const api = {
     request<Page<Pulse>>(`/search/pulses${query({ q, ...p })}`),
   searchUsers: (q: string, p: PageQuery = {}) =>
     request<Page<UserPublic>>(`/search/users${query({ q, ...p })}`),
+  suggestMentions: (q: string, limit = 6) =>
+    request<UserSummary[]>(`/search/mentions${query({ q, limit })}`),
 
   notifications: (p: PageQuery = {}) =>
     request<Page<AppNotification>>(`/notifications${query({ ...p })}`),
