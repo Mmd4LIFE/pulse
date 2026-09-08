@@ -17,10 +17,12 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import unquote
 
-# Fields Telegram signs over are *all* pairs except these two. ``hash`` is the
-# signature itself; ``signature`` is the separate Ed25519 third-party signature,
-# which is explicitly excluded from the HMAC data-check-string.
-_EXCLUDED_FROM_CHECK = frozenset({"hash", "signature"})
+# The HMAC covers every received field except ``hash``, which is the digest
+# itself. ``signature`` -- Telegram's Ed25519 signature for third-party
+# validation -- is an ordinary field as far as this check is concerned, and
+# leaving it out makes the digest of a real payload fail. It is excluded only
+# from the separate public-key verification path, which this is not.
+_EXCLUDED_FROM_CHECK = frozenset({"hash"})
 
 
 class InitDataError(Exception):
@@ -109,14 +111,14 @@ def diagnose(init_data: str, bot_token: str) -> dict[str, object]:
         text = "\n".join(f"{k}={v}" for k, v in sorted(pairs) if k not in exclude)
         return hmac.new(_secret_key(bot_token), text.encode(), hashlib.sha256).hexdigest()
 
+    both = frozenset({"hash", "signature"})
     candidates = {
-        # What we do now: decoded values, hash and signature both excluded.
-        "decoded_without_signature": check(decoded, _EXCLUDED_FROM_CHECK),
-        # Older guidance excluded only the hash.
-        "decoded_with_signature": check(decoded, frozenset({"hash"})),
-        # A client that hashed the percent-encoded form.
-        "raw_without_signature": check(raw, _EXCLUDED_FROM_CHECK),
-        "raw_with_signature": check(raw, frozenset({"hash"})),
+        # What we do now: decoded values, only the hash excluded.
+        "decoded_with_signature": check(decoded, _EXCLUDED_FROM_CHECK),
+        "decoded_without_signature": check(decoded, both),
+        # A client that hashed the percent-encoded form instead.
+        "raw_with_signature": check(raw, _EXCLUDED_FROM_CHECK),
+        "raw_without_signature": check(raw, both),
     }
     matched = [name for name, digest in candidates.items() if digest == received]
 

@@ -6,7 +6,7 @@ import hashlib
 import hmac
 import json
 import time
-from urllib.parse import quote, urlencode
+from urllib.parse import parse_qsl, quote, urlencode
 
 import pytest
 
@@ -85,15 +85,48 @@ def test_rejects_an_auth_date_from_the_future() -> None:
         verify_init_data(ahead, BOT_TOKEN)
 
 
-def test_signature_field_is_excluded_from_the_check_string() -> None:
-    """Telegram's Ed25519 ``signature`` must not take part in the HMAC."""
+def test_the_signature_field_takes_part_in_the_hmac() -> None:
+    """Telegram's ``signature`` is signed over like any other field.
+
+    Only ``hash`` is left out of the data-check-string. Excluding ``signature``
+    as well - as the Ed25519 third-party path does - makes a real payload from
+    a Telegram client fail to verify.
+    """
     fields = {
-        "user": json.dumps({"id": 7, "first_name": "Grace"}),
+        "user": json.dumps({"id": 7, "first_name": "Grace"}, separators=(",", ":")),
         "auth_date": str(int(time.time())),
+        "query_id": "AAHdF6IQAAAAAN0XohDhrOrc",
+        "signature": "Zm9vYmFyc2lnbmF0dXJl_" + "a" * 43,
+    }
+    assert verify_init_data(sign(fields), BOT_TOKEN).user.id == 7
+
+
+def test_dropping_the_signature_from_the_check_string_would_fail() -> None:
+    """Guards the exact regression that broke sign-in for real clients."""
+    fields = {
+        "user": json.dumps({"id": 7, "first_name": "Grace"}, separators=(",", ":")),
+        "auth_date": str(int(time.time())),
+        "signature": "a" * 64,
     }
     signed = sign(fields)
-    with_sig = signed + "&signature=" + "a" * 64
-    assert verify_init_data(with_sig, BOT_TOKEN).user.id == 7
+
+    # Recompute the digest the way the buggy version did, over every field
+    # except hash *and* signature, and confirm it does not match.
+    without = {k: v for k, v in fields.items() if k != "signature"}
+    check = "\n".join(f"{k}={v}" for k, v in sorted(without.items()))
+    secret = hmac.new(b"WebAppData", BOT_TOKEN.encode(), hashlib.sha256).digest()
+    wrong = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+
+    assert dict(parse_qsl(signed))["hash"] != wrong
+
+
+def test_a_payload_without_a_signature_field_still_verifies() -> None:
+    """Older clients send no signature at all; nothing to include, still valid."""
+    fields = {
+        "user": json.dumps({"id": 11, "first_name": "Old"}, separators=(",", ":")),
+        "auth_date": str(int(time.time())),
+    }
+    assert verify_init_data(sign(fields), BOT_TOKEN).user.id == 11
 
 
 def test_rejects_empty_input() -> None:
