@@ -130,6 +130,22 @@
     @apply transition-transform active:scale-95;
   }
 
+  /*
+   * Icons that read as part of a pulse rather than as app chrome: the reply,
+   * repulse, like, bookmark and share row, and the overflow menu beside it.
+   *
+   * Sized from --text-scale so they stay in proportion at every text size,
+   * which fixed pixel sizes could not do -- they looked oversized once the
+   * default text shrank, and would look undersized at Extra large.
+   *
+   * The 32px tap target around each one is deliberately not scaled: the glyph
+   * gets smaller, the thing you press does not.
+   */
+  .pulse-icon {
+    width: calc(0.9375rem * var(--text-scale));
+    height: calc(0.9375rem * var(--text-scale));
+  }
+
   /* Links inside pulse text: hashtags, mentions, URLs. */
   .entity-link {
     @apply text-primary hover:underline;

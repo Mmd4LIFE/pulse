@@ -233,7 +233,7 @@ function PulseMenu({ pulse }: { pulse: Pulse }) {
           onClick={(event) => event.stopPropagation()}
           className="-mr-1.5 -mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
-          <MoreHorizontal className="h-[18px] w-[18px]" />
+          <MoreHorizontal className="pulse-icon" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>

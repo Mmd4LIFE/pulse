@@ -38,7 +38,7 @@ export function PulseActions({ pulse }: ActionProps) {
           }}
           hoverClass="group-hover:bg-primary/10 group-hover:text-primary"
         >
-          <MessageCircle className="h-[18px] w-[18px]" />
+          <MessageCircle className="pulse-icon" />
         </ActionButton>
 
         <ActionButton
@@ -52,7 +52,7 @@ export function PulseActions({ pulse }: ActionProps) {
             repulse.mutate({ id: pulse.id, on: !pulse.is_repulsed });
           }}
         >
-          <Repeat2 className="h-[19px] w-[19px]" />
+          <Repeat2 className="pulse-icon" />
         </ActionButton>
 
         <ActionButton
@@ -68,7 +68,7 @@ export function PulseActions({ pulse }: ActionProps) {
         >
           <Heart
             className={cn(
-              "h-[18px] w-[18px]",
+              "pulse-icon",
               pulse.is_liked && "animate-pop fill-current",
             )}
           />
@@ -86,7 +86,7 @@ export function PulseActions({ pulse }: ActionProps) {
         >
           <Bookmark
             className={cn(
-              "h-[18px] w-[18px]",
+              "pulse-icon",
               pulse.is_bookmarked && "animate-pop fill-current",
             )}
           />
@@ -100,7 +100,7 @@ export function PulseActions({ pulse }: ActionProps) {
             void sharePulse(pulse);
           }}
         >
-          <Share className="h-[17px] w-[17px]" />
+          <Share className="pulse-icon" />
         </ActionButton>
       </div>
 
