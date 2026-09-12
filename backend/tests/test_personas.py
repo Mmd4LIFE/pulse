@@ -454,3 +454,42 @@ async def test_a_seeded_population_gets_a_follow_graph(db, model) -> None:
     assert (await db.scalar(select(func.count()).select_from(Follow))) == edges
     # Thousands of follow notifications at seed time would bury every inbox.
     assert (await db.scalar(select(func.count()).select_from(Notification))) == 0
+
+
+async def test_wiring_survives_edges_that_already_exist(db, model) -> None:
+    """A duplicate used to roll back, discarding every edge added before it."""
+    from sqlalchemy import func, select
+
+    from app.models import Follow
+
+    model(IDENTITY, "A post")
+    for topic in ("type design", "type design", "type design", "postgres"):
+        await ps.create_persona(db, topic=topic)
+
+    first = await ps.wire_follows(db, per_account=3)
+    assert first > 0
+    total_after_first = await db.scalar(select(func.count()).select_from(Follow))
+    assert total_after_first == first
+
+    # Running it again re-proposes the same pairs; nothing may be lost.
+    await ps.wire_follows(db, per_account=3)
+    assert (await db.scalar(select(func.count()).select_from(Follow))) >= total_after_first
+
+
+async def test_follow_counters_match_the_edges(db, model) -> None:
+    from sqlalchemy import func, select
+
+    from app.models import Follow, User
+
+    model(IDENTITY, "A post")
+    for topic in ("type design", "type design", "postgres"):
+        await ps.create_persona(db, topic=topic)
+
+    edges = await ps.wire_follows(db, per_account=3)
+    following = await db.scalar(select(func.sum(User.following_count)))
+    followers = await db.scalar(select(func.sum(User.followers_count)))
+    actual = await db.scalar(select(func.count()).select_from(Follow))
+
+    assert actual == edges
+    assert following == actual, "following_count drifted from the edges"
+    assert followers == actual, "followers_count drifted from the edges"

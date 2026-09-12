@@ -135,6 +135,14 @@ async def cmd_seed(args: argparse.Namespace) -> int:
     return 0 if made else 1
 
 
+async def cmd_wire_follows(args: argparse.Namespace) -> int:
+    """Rebuild the follow graph over the existing accounts."""
+    async with SessionLocal() as db:
+        edges = await persona_service.wire_follows(db, per_account=args.per_account)
+    print(f"{edges} new follow edges.")
+    return 0
+
+
 async def cmd_list(_: argparse.Namespace) -> int:
     async with SessionLocal() as db:
         rows = list((await db.scalars(select(Persona).order_by(Persona.id))).unique().all())
@@ -229,6 +237,10 @@ def build_parser() -> argparse.ArgumentParser:
     seed.add_argument("--like-chance", type=float, default=0.35)
     seed.add_argument("--repulse-chance", type=float, default=0.04)
     seed.set_defaults(run=cmd_seed)
+
+    wire = sub.add_parser("wire-follows", help="rebuild the follow graph")
+    wire.add_argument("--per-account", type=int, default=8)
+    wire.set_defaults(run=cmd_wire_follows)
 
     sub.add_parser("list", help="show every automated account").set_defaults(run=cmd_list)
 

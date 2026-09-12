@@ -15,7 +15,6 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -511,9 +510,9 @@ async def follow_each_other(db: AsyncSession, persona: Persona, sample: int = 4)
 async def wire_follows(db: AsyncSession, per_account: int = 8) -> int:
     """Give a freshly seeded population a follow graph.
 
-    Each account follows a few others, weighted towards ones on its own
-    subject so the graph has communities in it rather than being uniform
-    noise, with a handful of cross-subject edges so the clusters are joined.
+    Each account follows a few others, weighted towards ones on its own subject
+    so the graph has communities in it rather than being uniform noise, with a
+    couple of cross-subject edges so the clusters are joined.
     """
     personas = list(
         (await db.scalars(select(Persona).where(Persona.is_active.is_(True))))
@@ -528,50 +527,58 @@ async def wire_follows(db: AsyncSession, per_account: int = 8) -> int:
         by_topic.setdefault(persona.topic, []).append(persona)
 
     edges = 0
-    for persona in personas:
+    for index, persona in enumerate(personas, start=1):
         neighbours = [p for p in by_topic[persona.topic] if p.id != persona.id]
         strangers = [p for p in personas if p.topic != persona.topic]
 
         # Mostly people talking about the same thing, plus a couple from
-        # elsewhere -- which is roughly how anyone's following list looks.
+        # elsewhere -- roughly how anyone's following list looks.
         same = random.sample(neighbours, min(len(neighbours), max(1, per_account - 2)))
         other = random.sample(strangers, min(len(strangers), 2))
 
         for target in (*same, *other):
-            try:
-                if await follow_quietly(db, persona.user, target.user_id):
-                    edges += 1
-            except AppError:
-                continue
+            if await follow_quietly(db, persona.user_id, target.user_id):
+                edges += 1
+
+        # Committed in batches so a long run does not build one enormous
+        # transaction.
+        if index % 25 == 0:
+            await db.commit()
 
     await db.commit()
     return edges
 
 
-async def follow_quietly(db: AsyncSession, follower: User, followee_id: int) -> bool:
-    """Follow without a notification.
+async def follow_quietly(db: AsyncSession, follower_id: int, followee_id: int) -> bool:
+    """Add a follow edge without a notification.
 
     Seeding a population creates thousands of edges at once. Routing those
     through the ordinary follow would fill every inbox with a wall of them
     before anyone had seen a single post.
+
+    Uses ON CONFLICT rather than catching the duplicate: a caught IntegrityError
+    has to be rolled back, and a rollback here would discard every edge added
+    since the last commit, not just the one that clashed.
     """
     from sqlalchemy import update
+    from sqlalchemy.dialects.postgresql import insert
 
     from app.models import Follow
 
-    if follower.id == followee_id:
+    if follower_id == followee_id:
         return False
 
-    db.add(Follow(follower_id=follower.id, followee_id=followee_id))
-    try:
-        await db.flush()
-    except IntegrityError:
-        await db.rollback()
+    result = await db.execute(
+        insert(Follow)
+        .values(follower_id=follower_id, followee_id=followee_id)
+        .on_conflict_do_nothing(index_elements=["follower_id", "followee_id"])
+    )
+    if not result.rowcount:
         return False
 
     await db.execute(
         update(User)
-        .where(User.id == follower.id)
+        .where(User.id == follower_id)
         .values(following_count=User.following_count + 1)
     )
     await db.execute(
