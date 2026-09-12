@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import random
 import sys
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select, update
 
@@ -69,6 +71,68 @@ async def cmd_create(args: argparse.Namespace) -> int:
             if index + 1 < args.count:
                 await asyncio.sleep(1)
     return 0
+
+
+async def cmd_seed(args: argparse.Namespace) -> int:
+    """Create many accounts at once, spread across subjects.
+
+    Creation is the expensive part -- one model call each -- so a few run at a
+    time. Each gets its own session: they insert users concurrently, and
+    sharing one would serialise them anyway.
+    """
+    if not ai.is_configured():
+        print("AI_ENABLED is off or OPENAI_API_KEY is unset.", file=sys.stderr)
+        return 1
+
+    pool = persona_service.TOPIC_POOL
+    if args.language != "any":
+        pool = [t for t in pool if t[0] == args.language]
+    if not pool:
+        print(f"No subjects for language {args.language!r}.", file=sys.stderr)
+        return 1
+
+    made = 0
+    failed = 0
+    semaphore = asyncio.Semaphore(max(1, args.concurrency))
+
+    async def one(index: int) -> None:
+        nonlocal made, failed
+        language, topic = pool[index % len(pool)]
+        async with semaphore, SessionLocal() as db:
+            try:
+                persona = await persona_service.create_persona(
+                    db,
+                    topic=topic,
+                    language=language,
+                    post_every_minutes=args.every,
+                    reply_chance=args.reply_chance,
+                    like_chance=args.like_chance,
+                    repulse_chance=args.repulse_chance,
+                )
+            except Exception as exc:
+                failed += 1
+                print(f"  failed: {exc}", file=sys.stderr)
+                return
+
+            # Stagger the first post, or everything created together would come
+            # due at the same moment.
+            persona.last_posted_at = datetime.now(UTC) - timedelta(
+                minutes=random.randint(0, args.every)
+            )
+            await db.commit()
+
+            made += 1
+            print(f"  [{made:>4}/{args.count}] @{persona.user.username:<22} {topic[:44]}")
+
+    await asyncio.gather(*(one(i) for i in range(args.count)))
+
+    print(f"\nCreated {made}, failed {failed}.")
+    if made and args.follow:
+        print("Wiring up who follows whom…")
+        async with SessionLocal() as db:
+            wired = await persona_service.wire_follows(db, per_account=args.follow)
+        print(f"  {wired} follow edges.")
+    return 0 if made else 1
 
 
 async def cmd_list(_: argparse.Namespace) -> int:
@@ -154,6 +218,17 @@ def build_parser() -> argparse.ArgumentParser:
     create.add_argument("--repulse-chance", type=float, default=0.08)
     create.add_argument("--post-now", action="store_true", help="post once immediately")
     create.set_defaults(run=cmd_create)
+
+    seed = sub.add_parser("seed", help="create many accounts across many subjects")
+    seed.add_argument("--count", type=int, default=50)
+    seed.add_argument("--language", default="any", help="any, en, fa, …")
+    seed.add_argument("--every", type=int, default=360, help="minutes between posts")
+    seed.add_argument("--concurrency", type=int, default=6)
+    seed.add_argument("--follow", type=int, default=8, help="accounts each one follows")
+    seed.add_argument("--reply-chance", type=float, default=0.12)
+    seed.add_argument("--like-chance", type=float, default=0.35)
+    seed.add_argument("--repulse-chance", type=float, default=0.04)
+    seed.set_defaults(run=cmd_seed)
 
     sub.add_parser("list", help="show every automated account").set_defaults(run=cmd_list)
 

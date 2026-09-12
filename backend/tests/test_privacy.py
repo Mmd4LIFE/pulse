@@ -261,3 +261,67 @@ async def test_the_owner_sees_a_count_of_waiting_requests(
     )
     me = (await client.get("/api/v1/auth/me", headers=as_user(owner))).json()
     assert me["pending_follow_requests"] == 1
+
+
+async def test_approving_turns_the_request_notification_into_a_follow(
+    client, make_user, as_user
+) -> None:
+    """The inbox must reflect what happened, not what was once asked."""
+    owner, fan = await make_user("owner"), await make_user("fan")
+    await protect(client, owner, as_user)
+    await client.post("/api/v1/users/owner/follow", headers=as_user(fan))
+
+    inbox = (await client.get("/api/v1/notifications", headers=as_user(owner))).json()
+    assert [n["type"] for n in inbox["items"]] == ["follow_request"]
+
+    await client.post(
+        "/api/v1/users/me/follow-requests/fan/approve", headers=as_user(owner)
+    )
+
+    inbox = (await client.get("/api/v1/notifications", headers=as_user(owner))).json()
+    # One row still, but it now says what is true: they follow.
+    assert [n["type"] for n in inbox["items"]] == ["follow"]
+
+
+async def test_declining_removes_the_request_from_the_inbox(
+    client, make_user, as_user
+) -> None:
+    owner, fan = await make_user("owner"), await make_user("fan")
+    await protect(client, owner, as_user)
+    await client.post("/api/v1/users/owner/follow", headers=as_user(fan))
+
+    await client.post(
+        "/api/v1/users/me/follow-requests/fan/decline", headers=as_user(owner)
+    )
+
+    inbox = (await client.get("/api/v1/notifications", headers=as_user(owner))).json()
+    assert inbox["items"] == []
+
+
+async def test_the_requester_is_told_their_request_was_accepted(
+    client, make_user, as_user
+) -> None:
+    """Not that the owner followed them, which is not what happened."""
+    owner, fan = await make_user("owner"), await make_user("fan")
+    await protect(client, owner, as_user)
+    await client.post("/api/v1/users/owner/follow", headers=as_user(fan))
+    await client.post(
+        "/api/v1/users/me/follow-requests/fan/approve", headers=as_user(owner)
+    )
+
+    inbox = (await client.get("/api/v1/notifications", headers=as_user(fan))).json()
+    assert [n["type"] for n in inbox["items"]] == ["follow_accepted"]
+    assert inbox["items"][0]["actor"]["username"] == "owner"
+
+
+async def test_a_declined_requester_is_told_nothing(client, make_user, as_user) -> None:
+    """Silence, the way every other feed handles a decline."""
+    owner, fan = await make_user("owner"), await make_user("fan")
+    await protect(client, owner, as_user)
+    await client.post("/api/v1/users/owner/follow", headers=as_user(fan))
+    await client.post(
+        "/api/v1/users/me/follow-requests/fan/decline", headers=as_user(owner)
+    )
+
+    inbox = (await client.get("/api/v1/notifications", headers=as_user(fan))).json()
+    assert inbox["items"] == []

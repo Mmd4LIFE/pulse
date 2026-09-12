@@ -97,7 +97,8 @@ export type NotificationType =
   | "quote"
   | "follow"
   | "mention"
-  | "follow_request";
+  | "follow_request"
+  | "follow_accepted";
 
 export interface AppNotification {
   id: number;

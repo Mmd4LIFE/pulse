@@ -34,15 +34,27 @@ async def tick() -> dict[str, int]:
             log.info("persona_daily_cap_reached", used=used)
             return totals
 
+        # Least recently acted first, so a large population comes round in turn
+        # rather than the same few accounts being picked on every tick. The
+        # limit is what keeps a tick shorter than the interval between ticks,
+        # however many accounts exist.
         active = list(
-            (await db.scalars(select(Persona).where(Persona.is_active.is_(True))))
+            (
+                await db.scalars(
+                    select(Persona)
+                    .where(Persona.is_active.is_(True))
+                    .order_by(Persona.last_acted_at.asc().nullsfirst(), Persona.id)
+                    .limit(settings.AI_ACCOUNTS_PER_TICK)
+                )
+            )
             .unique()
             .all()
         )
         if not active:
             return totals
 
-        # Shuffled so the same account is not always first to a fresh pulse.
+        # Shuffled within the batch, so the same account is not always first to
+        # a fresh pulse.
         random.shuffle(active)
 
         for persona in active:

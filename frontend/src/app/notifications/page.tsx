@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Quote,
   Repeat2,
+  UserCheck,
   UserPlus,
   X,
 } from "lucide-react";
@@ -38,6 +39,7 @@ const ICONS: Record<NotificationType, React.ComponentType<{ className?: string }
   follow: UserPlus,
   mention: AtSign,
   follow_request: Lock,
+  follow_accepted: UserCheck,
 };
 
 const TONES: Record<NotificationType, string> = {
@@ -48,6 +50,7 @@ const TONES: Record<NotificationType, string> = {
   follow: "text-primary",
   mention: "text-primary",
   follow_request: "text-amber-500",
+  follow_accepted: "text-repulse",
 };
 
 const VERBS: Record<NotificationType, string> = {
@@ -58,6 +61,7 @@ const VERBS: Record<NotificationType, string> = {
   follow: "started following you",
   mention: "mentioned you",
   follow_request: "asked to follow you",
+  follow_accepted: "accepted your follow request",
 };
 
 export default function NotificationsPage() {

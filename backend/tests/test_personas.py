@@ -11,14 +11,22 @@ from app.services import personas as ps
 
 
 class FakeModel:
-    """Stands in for the completions API, recording what it was asked."""
+    """Stands in for the completions API, recording what it was asked.
 
-    def __init__(self, *replies: str) -> None:
-        self.replies = list(replies)
+    Answers by the kind of request rather than by call order, so a test that
+    creates several accounts gets an identity each time instead of the first
+    one and then whatever was next in a queue.
+    """
+
+    def __init__(self, identity: str, *replies: str) -> None:
+        self.identity = identity
+        self.replies = list(replies) or [identity]
         self.calls: list[tuple[str, str]] = []
 
     async def __call__(self, system, user, **kwargs):
         self.calls.append((system, user))
+        if "invent believable members" in system:
+            return ai.Completion(text=self.identity, tokens=42)
         text = self.replies.pop(0) if len(self.replies) > 1 else self.replies[0]
         return ai.Completion(text=text, tokens=42)
 
@@ -373,3 +381,76 @@ async def test_it_is_shown_the_replies_already_on_a_pulse(
     prompt = fake.calls[-1][1]
     assert "Agreed, rhythm beats shape." in prompt
     assert "Do not repeat any of these points" in prompt
+
+
+async def test_a_tick_is_bounded_however_many_accounts_exist(
+    db, model, monkeypatch
+) -> None:
+    """Otherwise a tick over hundreds of accounts outlasts the tick interval."""
+    from app.core.config import settings
+    from app.workers.personas import tick
+
+    monkeypatch.setattr(settings, "AI_ACCOUNTS_PER_TICK", 3)
+
+    model(IDENTITY, "A post")
+    for _ in range(8):
+        await ps.create_persona(db, topic="type design")
+
+    seen: list[int] = []
+    original = ps.act
+
+    async def counting(session, persona):
+        seen.append(persona.user_id)
+        return await original(session, persona)
+
+    monkeypatch.setattr(ps, "act", counting)
+    monkeypatch.setattr("app.workers.personas.persona_service.act", counting)
+
+    totals = await tick()
+    assert totals["accounts"] == 3, "the batch size was not respected"
+
+
+async def test_every_account_comes_round_in_turn(db, model, monkeypatch) -> None:
+    """Least-recently-acted first, or the same few are picked forever."""
+    from app.core.config import settings
+    from app.workers.personas import tick
+
+    monkeypatch.setattr(settings, "AI_ACCOUNTS_PER_TICK", 2)
+
+    model(IDENTITY, "A post")
+    for _ in range(6):
+        persona = await ps.create_persona(db, topic="type design")
+        persona.like_chance = persona.reply_chance = persona.repulse_chance = 0.0
+        persona.last_posted_at = datetime.now(UTC)
+    await db.commit()
+
+    touched: set[int] = set()
+    original = ps.act
+
+    async def recording(session, persona):
+        touched.add(persona.user_id)
+        return await original(session, persona)
+
+    monkeypatch.setattr("app.workers.personas.persona_service.act", recording)
+
+    for _ in range(3):
+        await tick()
+
+    assert len(touched) == 6, f"only {len(touched)} of 6 accounts ever had a turn"
+
+
+async def test_a_seeded_population_gets_a_follow_graph(db, model) -> None:
+    model(IDENTITY, "A post")
+    for topic in ("type design", "type design", "postgres", "postgres"):
+        await ps.create_persona(db, topic=topic)
+
+    edges = await ps.wire_follows(db, per_account=3)
+    assert edges > 0
+
+    from sqlalchemy import func, select
+
+    from app.models import Follow, Notification
+
+    assert (await db.scalar(select(func.count()).select_from(Follow))) == edges
+    # Thousands of follow notifications at seed time would bury every inbox.
+    assert (await db.scalar(select(func.count()).select_from(Notification))) == 0

@@ -23,6 +23,7 @@ class NotificationType(str, enum.Enum):
     FOLLOW = "follow"
     MENTION = "mention"
     FOLLOW_REQUEST = "follow_request"
+    FOLLOW_ACCEPTED = "follow_accepted"
 
 
 class Notification(IntPrimaryKey, Timestamped, Base):

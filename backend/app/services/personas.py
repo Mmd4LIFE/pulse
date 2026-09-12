@@ -15,6 +15,7 @@ import secrets
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -209,6 +210,50 @@ async def create_persona(
         language=language,
     )
     return persona
+
+
+# A spread of subjects for seeding a population. A feed where two hundred
+# accounts all discuss one thing reads as a bot farm; a feed with this many
+# separate conversations reads as a place.
+TOPIC_POOL: list[tuple[str, str]] = [
+    # --- Persian ---------------------------------------------------------
+    ("fa", "برنامه‌نویسی وب و تجربه‌ی کار با فریم‌ورک‌های جاوااسکریپت"),
+    ("fa", "طراحی رابط کاربری و تایپوگرافی فارسی"),
+    ("fa", "استارتاپ‌های ایرانی، جذب کاربر و درس‌هایی که گرفته‌اند"),
+    ("fa", "عکاسی خیابانی در شهرهای ایران"),
+    ("fa", "ادبیات فارسی، شعر معاصر و کتاب‌هایی که تازه خوانده"),
+    ("fa", "آشپزی خانگی و غذاهای محلی ایران"),
+    ("fa", "کوهنوردی و طبیعت‌گردی در البرز و زاگرس"),
+    ("fa", "موسیقی سنتی و ساز نواختن"),
+    ("fa", "خودرو، موتورسیکلت و تعمیرات دست‌ساز"),
+    ("fa", "معماری شهری و فضاهای عمومی تهران"),
+    ("fa", "بازی‌های ویدیویی و صنعت گیم در ایران"),
+    ("fa", "زندگی دانشجویی، کنکور و انتخاب رشته"),
+    ("fa", "سلامت، ورزش روزمره و دویدن"),
+    ("fa", "فیلم و سریال، نقد و معرفی"),
+    ("fa", "کارآفرینی کوچک، فروشگاه آنلاین و بسته‌بندی"),
+    # --- English ---------------------------------------------------------
+    ("en", "backend engineering, Postgres and shipping side projects"),
+    ("en", "frontend performance and the browser's rendering path"),
+    ("en", "type design, kerning and the history of letterforms"),
+    ("en", "film photography and darkroom printing"),
+    ("en", "long-distance running and training plans that went wrong"),
+    ("en", "home cooking, fermentation and cheap ingredients"),
+    ("en", "indie game development and the things nobody warns you about"),
+    ("en", "urban cycling, commuting and bike maintenance"),
+    ("en", "self-hosting, home servers and small networks"),
+    ("en", "books, mostly non-fiction, and arguing about them"),
+    ("en", "electronic music production in a very small room"),
+    ("en", "woodworking with hand tools"),
+    ("en", "climate, energy policy and the numbers behind both"),
+    ("en", "birdwatching and what turns up in a city park"),
+    ("en", "designing and printing board games"),
+    ("en", "mechanical keyboards and the sound of switches"),
+    ("en", "teaching yourself mathematics as an adult"),
+    ("en", "gardening on a balcony"),
+    ("en", "old cars, carburettors and weekends lost to them"),
+    ("en", "coffee, roasting at home and being insufferable about it"),
+]
 
 
 # ---------------------------------------------------------------------------
@@ -461,3 +506,77 @@ async def follow_each_other(db: AsyncSession, persona: Persona, sample: int = 4)
         except AppError:
             continue
     return followed
+
+
+async def wire_follows(db: AsyncSession, per_account: int = 8) -> int:
+    """Give a freshly seeded population a follow graph.
+
+    Each account follows a few others, weighted towards ones on its own
+    subject so the graph has communities in it rather than being uniform
+    noise, with a handful of cross-subject edges so the clusters are joined.
+    """
+    personas = list(
+        (await db.scalars(select(Persona).where(Persona.is_active.is_(True))))
+        .unique()
+        .all()
+    )
+    if len(personas) < 2:
+        return 0
+
+    by_topic: dict[str, list[Persona]] = {}
+    for persona in personas:
+        by_topic.setdefault(persona.topic, []).append(persona)
+
+    edges = 0
+    for persona in personas:
+        neighbours = [p for p in by_topic[persona.topic] if p.id != persona.id]
+        strangers = [p for p in personas if p.topic != persona.topic]
+
+        # Mostly people talking about the same thing, plus a couple from
+        # elsewhere -- which is roughly how anyone's following list looks.
+        same = random.sample(neighbours, min(len(neighbours), max(1, per_account - 2)))
+        other = random.sample(strangers, min(len(strangers), 2))
+
+        for target in (*same, *other):
+            try:
+                if await follow_quietly(db, persona.user, target.user_id):
+                    edges += 1
+            except AppError:
+                continue
+
+    await db.commit()
+    return edges
+
+
+async def follow_quietly(db: AsyncSession, follower: User, followee_id: int) -> bool:
+    """Follow without a notification.
+
+    Seeding a population creates thousands of edges at once. Routing those
+    through the ordinary follow would fill every inbox with a wall of them
+    before anyone had seen a single post.
+    """
+    from sqlalchemy import update
+
+    from app.models import Follow
+
+    if follower.id == followee_id:
+        return False
+
+    db.add(Follow(follower_id=follower.id, followee_id=followee_id))
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        return False
+
+    await db.execute(
+        update(User)
+        .where(User.id == follower.id)
+        .values(following_count=User.following_count + 1)
+    )
+    await db.execute(
+        update(User)
+        .where(User.id == followee_id)
+        .values(followers_count=User.followers_count + 1)
+    )
+    return True

@@ -290,11 +290,26 @@ async def _approve(db: AsyncSession, requester_id: int, target_id: int) -> bool:
         .where(User.id == target_id)
         .values(followers_count=User.followers_count + 1)
     )
+    # The pending request in the owner's inbox has been answered. Rewrite it to
+    # say what is now true, rather than leaving "asked to follow you" sitting
+    # there with buttons that no longer do anything.
+    await db.execute(
+        update(Notification)
+        .where(
+            Notification.recipient_id == target_id,
+            Notification.actor_id == requester_id,
+            Notification.type == NotificationType.FOLLOW_REQUEST,
+        )
+        .values(type=NotificationType.FOLLOW, is_read=True)
+    )
+
+    # And tell the requester they were let in -- which is not the same thing as
+    # the owner having followed them.
     db.add(
         Notification(
             recipient_id=requester_id,
             actor_id=target_id,
-            type=NotificationType.FOLLOW,
+            type=NotificationType.FOLLOW_ACCEPTED,
         )
     )
     return True
@@ -313,6 +328,17 @@ async def decline_follow_request(db: AsyncSession, target: User, requester_id: i
             FollowRequest.target_id == target.id,
         )
     )
+
+    # Take the request out of the owner's inbox with it. The requester is told
+    # nothing, the way every other feed handles a decline.
+    await db.execute(
+        delete(Notification).where(
+            Notification.recipient_id == target.id,
+            Notification.actor_id == requester_id,
+            Notification.type == NotificationType.FOLLOW_REQUEST,
+        )
+    )
+
     await db.commit()
     return (removed.rowcount or 0) > 0
 
@@ -354,6 +380,14 @@ async def unfollow(db: AsyncSession, follower: User, followee_id: int) -> bool:
             delete(FollowRequest).where(
                 FollowRequest.requester_id == follower.id,
                 FollowRequest.target_id == followee_id,
+            )
+        )
+        # A withdrawn request should not still be sitting in the other inbox.
+        await db.execute(
+            delete(Notification).where(
+                Notification.recipient_id == followee_id,
+                Notification.actor_id == follower.id,
+                Notification.type == NotificationType.FOLLOW_REQUEST,
             )
         )
         await db.commit()

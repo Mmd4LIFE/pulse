@@ -85,6 +85,12 @@ class Settings(BaseSettings):
     # be; the daily one bounds the bill no matter how many accounts exist.
     AI_MAX_POSTS_PER_ACCOUNT_PER_DAY: int = 12
     AI_MAX_GENERATIONS_PER_DAY: int = 600
+    # How many accounts get a turn per tick. Without a bound, a tick over
+    # hundreds of accounts would run longer than the interval between ticks and
+    # they would overlap. Accounts are taken least-recently-acted first, so
+    # everyone comes round in turn.
+    AI_ACCOUNTS_PER_TICK: int = 20
+
     # How far back an account will look for something to reply to or like.
     AI_TIMELINE_LOOKBACK_HOURS: int = 48
 
