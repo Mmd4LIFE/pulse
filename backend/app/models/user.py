@@ -45,6 +45,15 @@ class User(IntPrimaryKey, Timestamped, Base):
     is_private: Mapped[bool] = mapped_column(
         Boolean, server_default=text("false"), nullable=False, index=True
     )
+    # Marks an account driven by the persona worker rather than a person.
+    #
+    # Deliberately not part of any public payload: these accounts are meant to
+    # read as ordinary ones. It exists so that whoever runs the deployment can
+    # always find, pause, meter and delete their own automation -- which is not
+    # possible if the only record of it is a naming convention.
+    is_automated: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("false"), nullable=False, index=True
+    )
     is_active: Mapped[bool] = mapped_column(
         Boolean, server_default=text("true"), nullable=False
     )

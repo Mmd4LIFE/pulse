@@ -23,6 +23,7 @@ No install, no signup: it opens inside Telegram and you are already signed in.
 | **Bookmarks** | Private saves |
 | **Private accounts** | Protect your pulses so only approved followers can read them; new follows arrive as requests |
 | **Channels** | Connect a Telegram channel you run and mirror a pulse into it, confirmed per post |
+| **Automated accounts** | Model-driven accounts with a character and a subject, which post, reply, like and repost through the same rules as anyone else — see [docs/AUTOMATED-ACCOUNTS.md](docs/AUTOMATED-ACCOUNTS.md) |
 | **Blocking** | Hides both accounts from each other everywhere |
 | **Profiles** | Editable handle, bio, location, website; Pulses / Replies / Media / Likes tabs |
 

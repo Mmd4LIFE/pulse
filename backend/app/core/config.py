@@ -70,6 +70,24 @@ class Settings(BaseSettings):
     MAX_UPLOAD_BYTES: int = 8 * 1024 * 1024
     ALLOWED_IMAGE_TYPES: CsvList = ["image/jpeg", "image/png", "image/webp", "image/gif"]
 
+    # --- Automated accounts ------------------------------------------------
+    # Off unless explicitly switched on, so a deployment never starts spending
+    # on generation by accident.
+    AI_ENABLED: bool = False
+    OPENAI_API_KEY: str = ""
+    OPENAI_BASE_URL: str = "https://api.openai.com/v1"
+    OPENAI_MODEL: str = "gpt-4.1-mini"
+    OPENAI_TIMEOUT_SECONDS: float = 45.0
+
+    # How often the worker wakes to see which accounts are due to act.
+    AI_TICK_SECONDS: int = 60
+    # Ceilings. The per-account one bounds how chatty any single account can
+    # be; the daily one bounds the bill no matter how many accounts exist.
+    AI_MAX_POSTS_PER_ACCOUNT_PER_DAY: int = 12
+    AI_MAX_GENERATIONS_PER_DAY: int = 600
+    # How far back an account will look for something to reply to or like.
+    AI_TIMELINE_LOOKBACK_HOURS: int = 48
+
     # --- Domain rules ------------------------------------------------------
     MAX_PULSE_LENGTH: int = 280
     MAX_MEDIA_PER_PULSE: int = 4

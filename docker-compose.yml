@@ -105,6 +105,30 @@ services:
         condition: service_healthy
     networks: [pulsenet]
 
+  # Gives automated accounts their turns. Its own process, so a slow model
+  # call never ties up a request worker. Idles harmlessly when AI_ENABLED is
+  # off, which is the default.
+  worker:
+    build:
+      context: ./backend
+    image: pulse-backend:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /data/media
+    command: ["python", "-m", "app.workers.personas"]
+    volumes:
+      - media:/data/media
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    networks: [pulsenet]
+
   nginx:
     image: nginx:1.27-alpine
     restart: unless-stopped
