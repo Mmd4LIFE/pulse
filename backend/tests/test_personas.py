@@ -493,3 +493,32 @@ async def test_follow_counters_match_the_edges(db, model) -> None:
     assert actual == edges
     assert following == actual, "following_count drifted from the edges"
     assert followers == actual, "followers_count drifted from the edges"
+
+
+async def test_a_turn_survives_a_rollback_earlier_in_it(
+    db, model, make_user, as_user, client
+) -> None:
+    """like() rolls back when the edge exists, and a rollback expires the session.
+
+    The prompt is built from persona.user, so reading it afterwards used to
+    trip a lazy load in a context that cannot do IO -- "greenlet_spawn has not
+    been called". One duplicate like would then break the rest of the turn.
+    """
+    human = await make_user("human")
+    posted = await client.post(
+        "/api/v1/pulses", json={"content": "Something"}, headers=as_user(human)
+    )
+    target_id = posted.json()["id"]
+
+    model(IDENTITY, "Generated text")
+    persona = await ps.create_persona(db, topic="type design")
+
+    from app.services import pulses as pulse_service
+
+    # First like succeeds, second finds the row already there and rolls back.
+    assert await pulse_service.like(db, persona.user, target_id) is True
+    assert await pulse_service.like(db, persona.user, target_id) is False
+
+    # Everything after the rollback must still work.
+    pulse = await ps.write_post(db, persona)
+    assert pulse is not None and pulse.content == "Generated text"

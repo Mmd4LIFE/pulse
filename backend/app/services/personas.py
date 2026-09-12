@@ -14,7 +14,7 @@ import re
 import secrets
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, inspect, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -48,6 +48,30 @@ def language_name(code: str) -> str:
 # ---------------------------------------------------------------------------
 # Prompting
 # ---------------------------------------------------------------------------
+
+
+async def reattach(db: AsyncSession, persona: Persona) -> Persona:
+    """Reload a persona whose state a rollback may have expired.
+
+    ``like`` and ``repulse`` roll back when the edge already exists, and a
+    rollback expires every object in the session -- including ones belonging to
+    a different account's turn later in the same batch. The prompt is built
+    from ``persona.user``, so reading it afterwards triggers a lazy load in a
+    context that cannot perform IO, which SQLAlchemy reports as
+    "greenlet_spawn has not been called".
+
+    Reloading is cheap next to a model call, and makes every entry point here
+    safe to call whatever happened before it.
+    """
+    # Read the primary key from the mapper's identity rather than from the
+    # attribute. After a rollback ``persona.id`` is expired too, so touching it
+    # to build the query would trip the very lazy load this exists to avoid.
+    identity = inspect(persona).identity
+    if identity is None:
+        return persona  # never persisted; nothing to reload
+
+    reloaded = await db.scalar(select(Persona).where(Persona.id == identity[0]))
+    return reloaded if reloaded is not None else persona
 
 
 def _house_rules(persona: Persona) -> str:
@@ -297,6 +321,7 @@ def is_due_to_post(persona: Persona, *, now: datetime | None = None) -> bool:
 
 async def write_post(db: AsyncSession, persona: Persona) -> Pulse | None:
     """Generate and publish one post."""
+    persona = await reattach(db, persona)
     recent = (
         await db.scalars(
             select(Pulse.content)
@@ -338,6 +363,8 @@ async def write_post(db: AsyncSession, persona: Persona) -> Pulse | None:
 
 async def write_reply(db: AsyncSession, persona: Persona, target: Pulse) -> Pulse | None:
     """Generate and publish a reply to someone else's pulse."""
+    persona = await reattach(db, persona)
+
     # Without this, two accounts answering the same pulse independently arrive
     # at almost the same sentence -- which is exactly what gives automation
     # away. Showing the thread lets each one say something the others did not.
@@ -427,6 +454,16 @@ async def act(db: AsyncSession, persona: Persona) -> dict[str, int]:
     """
     did = {"posted": 0, "replied": 0, "liked": 0, "repulsed": 0}
 
+    # A previous account's turn in this batch may have rolled back, expiring
+    # everything in the session including this object.
+    persona = await reattach(db, persona)
+
+    # Marked up front. The worker takes accounts least-recently-acted first, so
+    # one that has its turn and does nothing must still count as having had it;
+    # otherwise it is picked first again next tick and the rest never come
+    # round.
+    persona.last_acted_at = datetime.now(UTC)
+
     try:
         under_daily_cap = (
             await _posts_today(db, persona) < settings.AI_MAX_POSTS_PER_ACCOUNT_PER_DAY
@@ -461,6 +498,9 @@ async def act(db: AsyncSession, persona: Persona) -> dict[str, int]:
             ):
                 did["replied"] = 1
 
+        # The engagement steps roll back on a duplicate; reload before the
+        # bookkeeping below touches this object again.
+        persona = await reattach(db, persona)
         persona.last_acted_at = datetime.now(UTC)
         persona.last_error = None
         await db.commit()
