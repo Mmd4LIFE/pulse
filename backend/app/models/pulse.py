@@ -30,6 +30,7 @@ from sqlalchemy import (
     String,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, IntPrimaryKey, Timestamped
@@ -94,6 +95,19 @@ class Pulse(IntPrimaryKey, Timestamped, Base):
         Boolean, server_default=text("false"), nullable=False
     )
 
+    # --- imported from a Telegram channel --------------------------------
+    # Set when the pulse came out of a channel export rather than being
+    # written here. The pair is unique, so re-importing an export updates
+    # what is already stored instead of duplicating the channel.
+    source_channel_id: Mapped[int | None] = mapped_column(BigInteger)
+    source_message_id: Mapped[int | None] = mapped_column(BigInteger)
+    # When it was posted to the channel, which is what the UI shows rather
+    # than the moment the import happened to run.
+    source_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The channel's own reactions, carried across as they were:
+    # [{"emoji": "👍", "count": 12}, ...]
+    reactions: Mapped[list | None] = mapped_column(JSONB)
+
     author: Mapped[User] = relationship(
         back_populates="pulses", foreign_keys=[author_id], lazy="joined"
     )
@@ -139,7 +153,26 @@ class Pulse(IntPrimaryKey, Timestamped, Base):
             unique=True,
             postgresql_where=text("repulse_of_id IS NOT NULL"),
         ),
+        # Makes re-importing an export idempotent rather than duplicating it.
+        Index(
+            "uq_pulses_source_message",
+            "source_channel_id",
+            "source_message_id",
+            unique=True,
+            postgresql_where=text("source_channel_id IS NOT NULL"),
+        ),
+        # The profile's Channel tab, newest post first.
+        Index(
+            "ix_pulses_source_date",
+            "author_id",
+            text("source_date DESC"),
+            postgresql_where=text("source_channel_id IS NOT NULL"),
+        ),
     )
+
+    @property
+    def is_imported(self) -> bool:
+        return self.source_channel_id is not None
 
     @property
     def is_repost(self) -> bool:

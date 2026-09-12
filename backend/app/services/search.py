@@ -63,6 +63,7 @@ async def search_pulses(
         .where(
             Pulse.is_deleted.is_(False),
             Pulse.repulse_of_id.is_(None),
+            Pulse.source_channel_id.is_(None),
             Pulse.content.ilike(f"%{term}%", escape="\\"),
         )
         .order_by(Pulse.id.desc())

@@ -10,7 +10,15 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, String, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, IntPrimaryKey, Timestamped
@@ -41,6 +49,21 @@ class Channel(IntPrimaryKey, Timestamped, Base):
     )
     last_error: Mapped[str | None] = mapped_column(String(255))
     last_posted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    # --- history import --------------------------------------------------
+    # Imports run in the background and can take a while on a large channel,
+    # so their progress is recorded here for the UI to poll.
+    import_status: Mapped[str] = mapped_column(
+        String(16), server_default=text("'idle'"), nullable=False
+    )
+    import_total: Mapped[int] = mapped_column(
+        Integer, server_default=text("0"), nullable=False
+    )
+    import_done: Mapped[int] = mapped_column(
+        Integer, server_default=text("0"), nullable=False
+    )
+    import_error: Mapped[str | None] = mapped_column(String(255))
+    imported_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     owner: Mapped[User] = relationship()
 

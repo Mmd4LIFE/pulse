@@ -8,6 +8,7 @@ different engine would not be testing the thing we ship.
 from __future__ import annotations
 
 import os
+import tempfile
 
 # Point the settings object at the test database before anything imports it.
 os.environ.setdefault("POSTGRES_DB", "pulse_test")
@@ -17,6 +18,8 @@ os.environ.setdefault("TELEGRAM_BOT_USERNAME", "pulsebot")
 os.environ.setdefault("ENVIRONMENT", "local")
 os.environ.setdefault("ALLOW_DEV_LOGIN", "true")
 os.environ.setdefault("LOG_JSON", "false")
+# Uploads land on disk, and the deployed path is not writable from a test run.
+os.environ.setdefault("MEDIA_ROOT", tempfile.mkdtemp(prefix="pulse-test-media-"))
 
 from collections.abc import AsyncIterator
 

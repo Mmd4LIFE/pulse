@@ -26,6 +26,13 @@ class ChannelOut(ORMModel):
     last_error: str | None = None
     last_posted_at: datetime | None = None
 
+    # Progress of the last history import.
+    import_status: str = "idle"
+    import_total: int = 0
+    import_done: int = 0
+    import_error: str | None = None
+    imported_at: datetime | None = None
+
     @property
     def display(self) -> str:
         return f"@{self.username}" if self.username else self.title

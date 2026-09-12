@@ -52,6 +52,11 @@ class PulseRef(ORMModel):
     is_deleted: bool = False
 
 
+class ChannelReaction(BaseModel):
+    emoji: str
+    count: int
+
+
 class PulseOut(ORMModel):
     id: int
     content: str
@@ -83,6 +88,12 @@ class PulseOut(ORMModel):
 
     # Whether this pulse was mirrored into the author's channel.
     sent_to_channel: bool = False
+
+    # Set when the pulse was imported from a Telegram channel rather than
+    # written here, along with the reactions it carried across.
+    is_imported: bool = False
+    source_date: datetime | None = None
+    reactions: list[ChannelReaction] = Field(default_factory=list)
 
 
 class ThreadOut(BaseModel):
