@@ -39,7 +39,7 @@ export function PageHeader({
         ) : null}
 
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-[17px] font-extrabold leading-tight">{title}</h1>
+          <h1 className="truncate text-lg font-extrabold leading-tight">{title}</h1>
           {subtitle ? (
             <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
           ) : null}

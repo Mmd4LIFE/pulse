@@ -69,7 +69,7 @@ export default function ThreadPage() {
         className="flex w-full items-center gap-3 border-b border-border px-4 py-3.5 text-left transition-colors hover:bg-accent/40"
       >
         {user ? <UserAvatar user={user} className="h-9 w-9" linked={false} /> : null}
-        <span className="text-[15px] text-muted-foreground">
+        <span className="text-base text-muted-foreground">
           Reply to @{pulse.author.username}
         </span>
       </button>

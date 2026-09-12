@@ -53,12 +53,12 @@ export function BottomNav() {
                     className={cn("h-[22px] w-[22px]", active && "stroke-[2.5]")}
                   />
                   {badge && badge > 0 ? (
-                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold leading-none text-destructive-foreground">
+                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-2xs font-bold leading-none text-destructive-foreground">
                       {badge > 99 ? "99+" : badge}
                     </span>
                   ) : null}
                 </span>
-                <span className="text-[10px] font-semibold tracking-tight">{label}</span>
+                <span className="text-2xs font-semibold tracking-tight">{label}</span>
               </Link>
             </li>
           );

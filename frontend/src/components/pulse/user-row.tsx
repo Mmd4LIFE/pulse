@@ -20,7 +20,7 @@ export function UserRow({ user }: { user: UserPublic }) {
       <div className="min-w-0 flex-1">
         <Link href={`/u/${user.username}`} className="block min-w-0">
           <span className="flex min-w-0 items-center gap-1 font-bold hover:underline">
-            <span className="truncate">{user.display_name}</span>
+            <bdi className="truncate">{user.display_name}</bdi>
             {user.is_verified ? <VerifiedBadge /> : null}
           </span>
           <span className="block truncate text-sm text-muted-foreground">
@@ -28,7 +28,9 @@ export function UserRow({ user }: { user: UserPublic }) {
           </span>
         </Link>
         {user.bio ? (
-          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{user.bio}</p>
+          <p dir="auto" className="mt-1 line-clamp-2 text-start text-sm text-muted-foreground">
+            {user.bio}
+          </p>
         ) : null}
       </div>
 

@@ -24,6 +24,7 @@ import { UserAvatar } from "@/components/pulse/user-avatar";
 import { Button } from "@/components/ui/button";
 import { useInfiniteFeed } from "@/hooks/use-feed";
 import { api } from "@/lib/api";
+import { detectDirection } from "@/lib/direction";
 import { haptics } from "@/lib/telegram";
 import { cn, relativeTime } from "@/lib/utils";
 import { toast } from "sonner";
@@ -172,7 +173,7 @@ function NotificationRow({ notification }: { notification: AppNotification }) {
         <div className="flex items-center gap-2">
           <UserAvatar user={notification.actor} className="h-7 w-7" linked={false} />
           <p className="min-w-0 flex-1 text-sm">
-            <span className="font-bold">{notification.actor.display_name}</span>{" "}
+            <bdi className="font-bold">{notification.actor.display_name}</bdi>{" "}
             <span className="text-muted-foreground">{VERBS[notification.type]}</span>
           </p>
           <time
@@ -184,7 +185,10 @@ function NotificationRow({ notification }: { notification: AppNotification }) {
         </div>
 
         {notification.pulse && !notification.pulse.is_deleted ? (
-          <p className="mt-1.5 line-clamp-2 pl-9 text-sm text-muted-foreground">
+          <p
+            dir={detectDirection(notification.pulse.content)}
+            className="mt-1.5 line-clamp-2 pl-9 text-start text-sm text-muted-foreground"
+          >
             {notification.pulse.content}
           </p>
         ) : null}

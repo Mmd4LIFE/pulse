@@ -72,9 +72,7 @@ export function MentionSuggestions({
             <UserAvatar user={user} linked={false} className="h-8 w-8" />
             <span className="min-w-0 flex-1">
               <span className="flex min-w-0 items-center gap-1">
-                <span className="truncate text-sm font-semibold">
-                  {user.display_name}
-                </span>
+                <bdi className="truncate text-sm font-semibold">{user.display_name}</bdi>
                 {user.is_verified ? <VerifiedBadge className="h-3.5 w-3.5" /> : null}
               </span>
               <span className="block truncate text-xs text-muted-foreground">

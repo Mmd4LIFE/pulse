@@ -61,6 +61,13 @@ class User(IntPrimaryKey, Timestamped, Base):
         Integer, server_default=text("0"), nullable=False
     )
 
+    # Reading preference, carried on the account so it follows the reader from
+    # one device to the next. Stored as a name rather than a number so the
+    # scale can be retuned without rewriting everyone's setting.
+    text_size: Mapped[str] = mapped_column(
+        String(8), server_default=text("'small'"), nullable=False
+    )
+
     last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     pulses: Mapped[list[Pulse]] = relationship(

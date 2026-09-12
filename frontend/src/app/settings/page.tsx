@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { UserAvatar } from "@/components/pulse/user-avatar";
 import { ChannelCard } from "@/components/settings/channel-card";
 import { PrivacyCard } from "@/components/settings/privacy-card";
+import { TextSizeCard } from "@/components/settings/text-size-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -104,6 +105,7 @@ export default function SettingsPage() {
 
         <Field label="Name">
           <Input
+            dir="auto"
             value={form.display_name}
             onChange={(event) => set("display_name")(event.target.value)}
             maxLength={LIMITS.display_name}
@@ -112,12 +114,13 @@ export default function SettingsPage() {
 
         <Field label="Bio" counter={`${form.bio.length}/${LIMITS.bio}`}>
           <Textarea
+            dir="auto"
             value={form.bio}
             onChange={(event) => set("bio")(event.target.value)}
             maxLength={LIMITS.bio}
             rows={3}
             placeholder="Tell people who you are"
-            className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-[15px]"
+            className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-base"
           />
         </Field>
 
@@ -140,6 +143,9 @@ export default function SettingsPage() {
             autoCapitalize="none"
           />
         </Field>
+
+        <div className="h-px bg-border" />
+        <TextSizeCard />
 
         <div className="h-px bg-border" />
         <PrivacyCard />

@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from typing import Literal
 
 from pydantic import Field, field_validator
 
 from app.schemas.common import ORMModel
+
+TextSize = Literal["small", "medium", "large", "xlarge"]
 
 USERNAME_RE = re.compile(r"^[A-Za-z0-9_]{3,32}$")
 RESERVED_USERNAMES = {
@@ -66,6 +69,7 @@ class UserPublic(ORMModel):
 
 
 class UserMe(UserPublic):
+    text_size: TextSize = "small"
     telegram_id: int
     language_code: str | None = None
     is_telegram_premium: bool = False
@@ -84,6 +88,10 @@ class UserSummary(ORMModel):
 
 class PrivacyUpdate(ORMModel):
     is_private: bool
+
+
+class AppearanceUpdate(ORMModel):
+    text_size: TextSize
 
 
 class UserUpdate(ORMModel):

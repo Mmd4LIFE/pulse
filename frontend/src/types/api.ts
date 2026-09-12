@@ -28,6 +28,7 @@ export interface UserPublic extends UserSummary {
 }
 
 export interface UserMe extends UserPublic {
+  text_size: "small" | "medium" | "large" | "xlarge";
   telegram_id: number;
   language_code: string | null;
   is_telegram_premium: boolean;

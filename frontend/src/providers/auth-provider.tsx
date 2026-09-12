@@ -11,6 +11,7 @@
 import * as React from "react";
 
 import { ApiError, api, tokens } from "@/lib/api";
+import { applyTextSize, cachedTextSize, isTextSize } from "@/lib/text-size";
 import {
   applyTelegramTheme,
   getWebApp,
@@ -67,6 +68,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     initialiseWebApp();
     applyTelegramTheme();
+    // The last known size, applied before the session resolves, so a cold
+    // start paints at the reader's size instead of reflowing once it arrives.
+    applyTextSize(cachedTextSize());
     const stopTracking = trackViewport();
 
     const app = getWebApp();
@@ -145,6 +149,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
     };
   }, [attempt]);
+
+  // The account is the source of truth: applying it here covers sign-in, a
+  // restored session, and a change made on another device.
+  React.useEffect(() => {
+    if (user && isTextSize(user.text_size)) applyTextSize(user.text_size);
+  }, [user]);
 
   const refresh = React.useCallback(async () => {
     try {

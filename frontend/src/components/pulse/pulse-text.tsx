@@ -10,6 +10,7 @@
 import Link from "next/link";
 import * as React from "react";
 
+import { detectDirection } from "@/lib/direction";
 import { openExternal } from "@/lib/telegram";
 import { cn } from "@/lib/utils";
 
@@ -23,11 +24,19 @@ interface Segment {
 
 export function PulseText({ text, className }: { text: string; className?: string }) {
   const segments = React.useMemo(() => parse(text), [text]);
+  const direction = React.useMemo(() => detectDirection(text), [text]);
 
   if (!text) return null;
 
   return (
-    <p className={cn("whitespace-pre-wrap break-anywhere text-[15px] leading-[1.45]", className)}>
+    <p
+      dir={direction}
+      className={cn(
+        // text-start rather than text-left, so alignment follows the direction.
+        "whitespace-pre-wrap break-anywhere text-start text-base",
+        className,
+      )}
+    >
       {segments.map((segment) => (
         <React.Fragment key={segment.key}>{segment.node}</React.Fragment>
       ))}
@@ -52,43 +61,49 @@ function parse(text: string): Segment[] {
       out.push({
         key: `u${index++}`,
         node: (
-          <a
-            href={url}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              openExternal(url);
-            }}
-            className="entity-link"
-          >
-            {prettyUrl(url)}
-          </a>
+          <bdi>
+            <a
+              href={url}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openExternal(url);
+              }}
+              className="entity-link"
+            >
+              {prettyUrl(url)}
+            </a>
+          </bdi>
         ),
       });
     } else if (hashtag) {
       out.push({
         key: `h${index++}`,
         node: (
-          <Link
-            href={`/tag/${encodeURIComponent(hashtag.toLowerCase())}`}
-            onClick={(event) => event.stopPropagation()}
-            className="entity-link"
-          >
-            #{hashtag}
-          </Link>
+          <bdi>
+            <Link
+              href={`/tag/${encodeURIComponent(hashtag.toLowerCase())}`}
+              onClick={(event) => event.stopPropagation()}
+              className="entity-link"
+            >
+              #{hashtag}
+            </Link>
+          </bdi>
         ),
       });
     } else if (mention) {
       out.push({
         key: `m${index++}`,
         node: (
-          <Link
-            href={`/u/${mention}`}
-            onClick={(event) => event.stopPropagation()}
-            className="entity-link"
-          >
-            @{mention}
-          </Link>
+          <bdi>
+            <Link
+              href={`/u/${mention}`}
+              onClick={(event) => event.stopPropagation()}
+              className="entity-link"
+            >
+              @{mention}
+            </Link>
+          </bdi>
         ),
       });
     } else {

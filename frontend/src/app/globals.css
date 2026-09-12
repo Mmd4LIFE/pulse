@@ -42,6 +42,13 @@
 
     --radius: 1rem;
 
+    /*
+     * The reader's text size, applied to every font-size token in the Tailwind
+     * config. Set from the account's saved preference on boot; this value is
+     * the small default so the first paint is already correct.
+     */
+    --text-scale: 0.875;
+
     /* Overwritten from Telegram's themeParams when running inside a client. */
     --tg-viewport: 100dvh;
     --tg-safe-top: 0px;

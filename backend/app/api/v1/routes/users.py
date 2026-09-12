@@ -8,7 +8,13 @@ from app.api.deps import CurrentUser, DbSession, OptionalUser, Paging
 from app.core.errors import PermissionDeniedError
 from app.schemas.common import CountResponse, Message, Page
 from app.schemas.pulse import PulseOut
-from app.schemas.user import PrivacyUpdate, UserMe, UserPublic, UserUpdate
+from app.schemas.user import (
+    AppearanceUpdate,
+    PrivacyUpdate,
+    UserMe,
+    UserPublic,
+    UserUpdate,
+)
 from app.services import serializers, timelines
 from app.services import users as user_service
 from app.services.visibility import may_view_account
@@ -37,6 +43,17 @@ async def set_privacy(payload: PrivacyUpdate, user: CurrentUser, db: DbSession) 
     """
     updated = await user_service.set_private(db, user, payload.is_private)
     return await _me(db, updated)
+
+
+@router.put("/me/appearance", response_model=UserMe)
+async def set_appearance(
+    payload: AppearanceUpdate, user: CurrentUser, db: DbSession
+) -> UserMe:
+    """Set the reading text size. Applies immediately, with no Save step."""
+    user.text_size = payload.text_size
+    await db.commit()
+    await db.refresh(user)
+    return await _me(db, user)
 
 
 @router.get("/me/follow-requests", response_model=Page[UserPublic])

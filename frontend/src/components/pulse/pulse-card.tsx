@@ -80,7 +80,7 @@ export function PulseCard({
             <div className={cn("min-w-0 flex-1", isDetail && "flex flex-col")}>
               <div
                 className={cn(
-                  "flex min-w-0 items-center gap-1.5 text-[15px]",
+                  "flex min-w-0 items-center gap-1.5 text-base",
                   isDetail && "flex-col items-start gap-0",
                 )}
               >
@@ -89,7 +89,7 @@ export function PulseCard({
                   onClick={(event) => event.stopPropagation()}
                   className="flex min-w-0 items-center gap-1 font-bold hover:underline"
                 >
-                  <span className="truncate">{pulse.author.display_name}</span>
+                  <bdi className="truncate">{pulse.author.display_name}</bdi>
                   {pulse.author.is_verified ? <VerifiedBadge /> : null}
                 </Link>
                 <span
@@ -121,7 +121,7 @@ export function PulseCard({
           </header>
 
           {pulse.reply_to && !connected ? (
-            <p className="mt-0.5 text-[13px] text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               Replying to{" "}
               <Link
                 href={`/u/${pulse.reply_to.author.username}`}
@@ -134,7 +134,7 @@ export function PulseCard({
           ) : null}
 
           <div className="mt-1">
-            <PulseText text={pulse.content} className={cn(isDetail && "text-[17px]")} />
+            <PulseText text={pulse.content} className={cn(isDetail && "text-lg")} />
             <MediaGrid media={pulse.media} />
             {pulse.quote_of ? <QuotedPulse quote={pulse.quote_of} /> : null}
           </div>
@@ -184,9 +184,9 @@ function QuotedPulse({ quote }: { quote: PulseRef }) {
       }}
       className="mt-3 cursor-pointer rounded-2xl border border-border px-3.5 py-3 transition-colors hover:bg-accent/40"
     >
-      <div className="flex items-center gap-1.5 text-[13px]">
+      <div className="flex items-center gap-1.5 text-sm">
         <UserAvatar user={quote.author} className="h-5 w-5" linked={false} />
-        <span className="truncate font-bold">{quote.author.display_name}</span>
+        <bdi className="truncate font-bold">{quote.author.display_name}</bdi>
         {quote.author.is_verified ? <VerifiedBadge className="h-3.5 w-3.5" /> : null}
         <span className="truncate text-muted-foreground">@{quote.author.username}</span>
         <span aria-hidden className="text-muted-foreground">

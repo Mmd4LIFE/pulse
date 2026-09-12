@@ -234,7 +234,7 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
             </p>
             <PulseText
               text={replyTo.content}
-              className="mt-1 line-clamp-3 text-[13px] text-muted-foreground"
+              className="mt-1 line-clamp-3 text-sm text-muted-foreground"
             />
           </div>
         ) : null}
@@ -255,6 +255,7 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
               onClick={(event) => syncMention(event.currentTarget)}
               onBlur={() => setMention(null)}
               onKeyDown={onMentionKeyDown}
+              dir="auto"
               placeholder={replyTo ? "Post your reply" : "What's the pulse?"}
               rows={4}
               maxLength={MAX_LENGTH + 40}
@@ -303,7 +304,7 @@ export function Composer({ open, onOpenChange, replyTo, quoteOf, onPosted }: Pro
             <p className="font-semibold">{quoteOf.author.display_name}</p>
             <PulseText
               text={quoteOf.content}
-              className="mt-0.5 line-clamp-3 text-[13px] text-muted-foreground"
+              className="mt-0.5 line-clamp-3 text-sm text-muted-foreground"
             />
           </div>
         ) : null}

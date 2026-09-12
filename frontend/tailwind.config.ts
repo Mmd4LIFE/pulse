@@ -6,6 +6,22 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      // Every text size multiplies by --text-scale, the reader's preference,
+      // so one variable resizes the whole app. Spacing stays fixed: this is a
+      // text-size control, not a zoom, so tap targets keep their size.
+      //
+      // Line heights are unitless on purpose -- they are relative to each
+      // element's own font size, so they grow with the text instead of
+      // clamping it once someone picks a larger size.
+      fontSize: {
+        "2xs": ["calc(0.625rem * var(--text-scale))", { lineHeight: "1.4" }],
+        xs: ["calc(0.6875rem * var(--text-scale))", { lineHeight: "1.4" }],
+        sm: ["calc(0.8125rem * var(--text-scale))", { lineHeight: "1.45" }],
+        base: ["calc(0.9375rem * var(--text-scale))", { lineHeight: "1.5" }],
+        lg: ["calc(1.0625rem * var(--text-scale))", { lineHeight: "1.45" }],
+        xl: ["calc(1.25rem * var(--text-scale))", { lineHeight: "1.35" }],
+        "2xl": ["calc(1.5rem * var(--text-scale))", { lineHeight: "1.3" }],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

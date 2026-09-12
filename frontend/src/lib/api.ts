@@ -22,6 +22,8 @@ import type {
   UserSummary,
 } from "@/types/api";
 
+import type { TextSize } from "@/lib/text-size";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1";
 const REFRESH_KEY = "pulse.refresh_token";
 
@@ -246,6 +248,12 @@ export const api = {
     request<UserPublic[]>(`/users/suggestions${query({ limit })}`),
 
   // --- privacy & follow requests -----------------------------------------
+  setTextSize: (size: TextSize) =>
+    request<UserMe>("/users/me/appearance", {
+      method: "PUT",
+      body: { text_size: size },
+    }),
+
   setPrivacy: (isPrivate: boolean) =>
     request<UserMe>("/users/me/privacy", {
       method: "PUT",

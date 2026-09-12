@@ -132,7 +132,7 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
 
         <div className="mt-3">
           <h2 className="flex items-center gap-1.5 text-xl font-extrabold">
-            <span className="break-anywhere">{user.display_name}</span>
+            <bdi className="break-anywhere">{user.display_name}</bdi>
             {user.is_verified ? <VerifiedBadge className="h-5 w-5" /> : null}
           </h2>
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -140,7 +140,7 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
             {user.is_private ? (
               <span
                 title="Protected account"
-                className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium"
+                className="inline-flex items-center gap-1 rounded-md bg-secondary px-1.5 py-0.5 text-xs font-medium"
               >
                 <Lock className="h-3 w-3" />
                 Protected
@@ -148,14 +148,16 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
             ) : null}
           </p>
           {user.is_followed_by && !isMe ? (
-            <span className="mt-1.5 inline-block rounded-md bg-secondary px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+            <span className="mt-1.5 inline-block rounded-md bg-secondary px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               Follows you
             </span>
           ) : null}
         </div>
 
         {user.bio ? (
-          <p className="mt-3 whitespace-pre-wrap break-anywhere text-[15px]">{user.bio}</p>
+          <p dir="auto" className="mt-3 whitespace-pre-wrap break-anywhere text-start text-base">
+            {user.bio}
+          </p>
         ) : null}
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
