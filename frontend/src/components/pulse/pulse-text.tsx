@@ -34,6 +34,11 @@ export function PulseText({ text, className }: { text: string; className?: strin
       className={cn(
         // text-start rather than text-left, so alignment follows the direction.
         "whitespace-pre-wrap break-anywhere text-start text-base",
+        // Persian and Arabic carry taller ascenders and deeper descenders than
+        // Latin, so the spacing that suits English crowds them. A leading-*
+        // utility is used rather than a rule on [dir], because the font-size
+        // utility sets line-height too and would otherwise win.
+        direction === "rtl" && "leading-[1.8]",
         className,
       )}
     >

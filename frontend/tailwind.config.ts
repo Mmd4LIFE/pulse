@@ -6,6 +6,24 @@ const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
+      fontFamily: {
+        // Latin first, so English takes Inter. Browsers fall through this list
+        // per glyph, so Persian and Arabic -- which Inter does not cover --
+        // land on Vazirmatn rather than the system's heavy Arabic fallback.
+        sans: [
+          "var(--font-latin)",
+          "var(--font-arabic)",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "sans-serif",
+          "Apple Color Emoji",
+          "Segoe UI Emoji",
+        ],
+      },
+
       // Every text size multiplies by --text-scale, the reader's preference,
       // so one variable resizes the whole app. Spacing stays fixed: this is a
       // text-size control, not a zoom, so tap targets keep their size.

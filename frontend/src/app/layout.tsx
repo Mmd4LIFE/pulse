@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Vazirmatn } from "next/font/google";
 import { Toaster } from "sonner";
 
 import { AppGate } from "@/components/layout/app-gate";
@@ -6,6 +7,33 @@ import { AuthProvider } from "@/providers/auth-provider";
 import { QueryProvider } from "@/providers/query-provider";
 
 import "./globals.css";
+
+/*
+ * Two faces, one for each script the app is actually written in.
+ *
+ * X sets Latin text in Chirp, which is proprietary and cannot be shipped here.
+ * Inter is the closest freely licensed grotesque -- same open apertures and
+ * near-identical metrics -- so Latin reads the way it does there.
+ *
+ * The Persian half matters more. With no font declared at all, iOS had no
+ * family in the stack with Arabic coverage and fell back to Geeza Pro, which
+ * is why pulses looked heavy and cramped. Vazirmatn is the modern Persian UI
+ * face, and sits much closer to the SF Arabic that X gets on iOS.
+ *
+ * Both are self-hosted by next/font, so there is no request to Google at
+ * runtime and no third party in the critical path.
+ */
+const latin = Inter({
+  subsets: ["latin"],
+  variable: "--font-latin",
+  display: "swap",
+});
+
+const arabic = Vazirmatn({
+  subsets: ["arabic", "latin"],
+  variable: "--font-arabic",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Pulse",
@@ -36,7 +64,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${latin.variable} ${arabic.variable}`}
+    >
       <head>
         {/*
           A plain blocking script, deliberately not next/script: with

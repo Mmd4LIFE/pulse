@@ -98,7 +98,6 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
     /* The webview owns scrolling; the app never scrolls the document itself. */
     overscroll-behavior-y: none;
   }
