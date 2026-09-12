@@ -42,6 +42,10 @@ services:
   migrate:
     build:
       context: ./backend
+    # Pinned to the same image as the API. They are built from one context, and
+    # tagging them alike means compose builds it once -- so it is not possible
+    # to ship an API whose migrations were left on an older image.
+    image: pulse-backend:latest
     restart: "no"
     env_file: .env
     environment:
@@ -56,6 +60,7 @@ services:
   api:
     build:
       context: ./backend
+    image: pulse-backend:latest
     restart: unless-stopped
     env_file: .env
     environment:
