@@ -44,7 +44,7 @@ export function BottomNav() {
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "tap-target relative flex h-[54px] flex-col items-center justify-center gap-0.5",
+                  "tap-target relative flex h-[var(--nav-row)] flex-col items-center justify-center gap-0.5",
                   active ? "text-primary" : "text-muted-foreground",
                 )}
               >

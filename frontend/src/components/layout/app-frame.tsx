@@ -2,7 +2,7 @@
 
 /** The persistent chrome: header slot, scrollable content, tab bar, compose FAB. */
 
-import { Feather } from "lucide-react";
+import { Plus } from "lucide-react";
 import * as React from "react";
 
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -37,13 +37,18 @@ export function AppFrame({ children, header, hideCompose = false }: Props) {
               setComposing(true);
             }}
             className={cn(
-              "fixed bottom-[70px] right-[max(1rem,calc(50%-300px+1rem))] z-30",
+              // Above the tab bar, not z-equal with it: the bar renders later,
+              // so at the same level it painted over the button.
+              "fixed right-[max(1rem,calc(50%-300px+1rem))] z-40",
               "flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/25",
               "tap-target transition-transform hover:scale-105",
             )}
-            style={{ bottom: "calc(70px + var(--tg-safe-bottom))" }}
+            // Measured off the bar's full height, insets included, so it clears
+            // it on every device rather than only on ones without a home
+            // indicator.
+            style={{ bottom: "calc(var(--nav-height) + 1rem)" }}
           >
-            <Feather className="h-6 w-6" />
+            <Plus className="h-7 w-7" strokeWidth={2.5} />
           </button>
           <Composer open={composing} onOpenChange={setComposing} />
         </>

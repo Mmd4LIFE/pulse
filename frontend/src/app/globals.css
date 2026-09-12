@@ -53,6 +53,17 @@
     --tg-viewport: 100dvh;
     --tg-safe-top: 0px;
     --tg-safe-bottom: 0px;
+
+    /*
+     * The tab bar's own row, and the padding it adds beneath itself to clear
+     * the home indicator. Anything floating above the bar has to measure
+     * against the total: the compose button previously counted only the
+     * Telegram inset and so sat inside the bar on any device with a home
+     * indicator.
+     */
+    --nav-row: 54px;
+    --nav-inset: calc(var(--tg-safe-bottom) + env(safe-area-inset-bottom, 0px));
+    --nav-height: calc(var(--nav-row) + var(--nav-inset));
   }
 
   .dark {
@@ -161,7 +172,7 @@
     scrollbar-width: none;
   }
   .safe-bottom {
-    padding-bottom: calc(var(--tg-safe-bottom) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: var(--nav-inset);
   }
   .break-anywhere {
     overflow-wrap: anywhere;
