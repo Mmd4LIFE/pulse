@@ -75,10 +75,6 @@ export interface Pulse {
   is_mine: boolean;
   repulsed_by: UserSummary | null;
   sent_to_channel: boolean;
-  /** Imported from a Telegram channel rather than written here. */
-  is_imported: boolean;
-  source_date: string | null;
-  reactions: { emoji: string; count: number }[];
 }
 
 export interface Thread {
@@ -144,9 +140,4 @@ export interface ConnectedChannel {
   can_post: boolean;
   last_error: string | null;
   last_posted_at: string | null;
-  import_status: "idle" | "running" | "done" | "failed";
-  import_total: number;
-  import_done: number;
-  import_error: string | null;
-  imported_at: string | null;
 }

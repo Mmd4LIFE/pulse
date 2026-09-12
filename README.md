@@ -23,7 +23,6 @@ No install, no signup: it opens inside Telegram and you are already signed in.
 | **Bookmarks** | Private saves |
 | **Private accounts** | Protect your pulses so only approved followers can read them; new follows arrive as requests |
 | **Channels** | Connect a Telegram channel you run and mirror a pulse into it, confirmed per post |
-| **Channel import** | Bring a channel's whole history in from a Telegram export — text, images and reaction tallies — into its own profile tab |
 | **Blocking** | Hides both accounts from each other everywhere |
 | **Profiles** | Editable handle, bio, location, website; Pulses / Replies / Media / Likes tabs |
 

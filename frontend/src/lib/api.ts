@@ -284,16 +284,6 @@ export const api = {
     }),
   disconnectChannel: () => request<void>("/channels/me", { method: "DELETE" }),
   testChannel: () => request<{ message: string }>("/channels/me/test", { method: "POST" }),
-  importChannelHistory: (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    return request<{ message: string }>("/channels/me/import", {
-      method: "POST",
-      body: form,
-    });
-  },
-  resetChannelImport: () =>
-    request<{ message: string }>("/channels/me/import/reset", { method: "POST" }),
 
   userPulses: (username: string, p: PageQuery = {}) =>
     request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/pulses${query({ ...p })}`),
@@ -301,10 +291,6 @@ export const api = {
     request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/replies${query({ ...p })}`),
   userMedia: (username: string, p: PageQuery = {}) =>
     request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/media${query({ ...p })}`),
-  userChannel: (username: string, p: PageQuery = {}) =>
-    request<Page<Pulse>>(
-      `/users/${encodeURIComponent(username)}/channel${query({ ...p })}`,
-    ),
   userLikes: (username: string, p: PageQuery = {}) =>
     request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/likes${query({ ...p })}`),
   followers: (username: string, p: PageQuery = {}) =>

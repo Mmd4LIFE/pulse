@@ -156,9 +156,6 @@ def to_pulse_out(
         is_mine=ctx.viewer_id is not None and pulse.author_id == ctx.viewer_id,
         repulsed_by=to_user_summary(repulsed_by) if repulsed_by else None,
         sent_to_channel=pulse.sent_to_channel,
-        is_imported=pulse.source_channel_id is not None,
-        source_date=pulse.source_date,
-        reactions=pulse.reactions or [],
     )
 
 

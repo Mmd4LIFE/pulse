@@ -27,19 +27,12 @@ from app.services.pulses import _load_options
 from app.services.visibility import restrict_to_visible
 
 
-def _base(viewer_hidden: Sequence[int], *, imported: bool = False) -> Select:
+def _base(viewer_hidden: Sequence[int]) -> Select:
     stmt = (
         select(Pulse)
         .options(*_load_options())
         .where(Pulse.is_deleted.is_(False))
         .order_by(Pulse.id.desc())
-    )
-    # An imported channel archive is browsed from its own tab, never mixed
-    # into a live timeline.
-    stmt = stmt.where(
-        Pulse.source_channel_id.is_not(None)
-        if imported
-        else Pulse.source_channel_id.is_(None)
     )
     if viewer_hidden:
         stmt = stmt.where(Pulse.author_id.not_in(viewer_hidden))
@@ -233,7 +226,6 @@ async def trending(
             .where(
                 PulseHashtag.created_at >= since,
                 Pulse.is_deleted.is_(False),
-                Pulse.source_channel_id.is_(None),
                 # A protected account's hashtags must not shape public trends.
                 Pulse.author_id.not_in(select(User.id).where(User.is_private.is_(True))),
             )
@@ -260,15 +252,5 @@ async def by_hashtag(
     stmt = restrict_to_visible(
         _base(hidden).where(Pulse.id.in_(tagged)), viewer.id if viewer else None
     )
-    rows = list((await db.scalars(_paginate(stmt, limit, cursor))).unique().all())
-    return split_page(rows, limit)
-
-
-async def channel_archive(
-    db: AsyncSession, author: User, viewer: User | None, limit: int, cursor: int | None
-) -> tuple[list[Pulse], str | None]:
-    """The posts imported from this account's Telegram channel, newest first."""
-    hidden = await user_service.blocked_ids(db, viewer.id) if viewer else []
-    stmt = _base(hidden, imported=True).where(Pulse.author_id == author.id)
     rows = list((await db.scalars(_paginate(stmt, limit, cursor))).unique().all())
     return split_page(rows, limit)

@@ -1,11 +1,10 @@
 "use client";
 
-import { Megaphone, MoreHorizontal, Radio, Repeat2, Trash2, UserX } from "lucide-react";
+import { Megaphone, MoreHorizontal, Repeat2, Trash2, UserX } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 
-import { ChannelReactions } from "@/components/pulse/channel-reactions";
 import { MediaGrid } from "@/components/pulse/media-grid";
 import { PulseActions } from "@/components/pulse/pulse-actions";
 import { PulseText } from "@/components/pulse/pulse-text";
@@ -108,12 +107,6 @@ export function PulseCard({
                       </time>
                     </>
                   ) : null}
-                  {pulse.is_imported ? (
-                    <Radio
-                      className="h-3.5 w-3.5 shrink-0"
-                      aria-label="Imported from the channel"
-                    />
-                  ) : null}
                   {pulse.sent_to_channel && pulse.is_mine ? (
                     <Megaphone
                       className="h-3.5 w-3.5 shrink-0"
@@ -144,7 +137,6 @@ export function PulseCard({
             <PulseText text={pulse.content} className={cn(isDetail && "text-lg")} />
             <MediaGrid media={pulse.media} />
             {pulse.quote_of ? <QuotedPulse quote={pulse.quote_of} /> : null}
-            <ChannelReactions reactions={pulse.reactions} />
           </div>
 
           {isDetail ? (

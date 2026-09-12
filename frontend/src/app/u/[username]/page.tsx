@@ -226,12 +226,6 @@ function ProfileTabs({ username }: { username: string }) {
     (p) => api.userPulses(username, p),
     { enabled: tab === "pulses" },
   );
-  const channel = useInfiniteFeed(
-    ["user", username, "channel"],
-    (p) => api.userChannel(username, p),
-    // Always on: its emptiness is what decides whether the tab is offered.
-    { enabled: true },
-  );
   const replies = useInfiniteFeed(
     ["user", username, "replies"],
     (p) => api.userReplies(username, p),
@@ -251,27 +245,15 @@ function ProfileTabs({ username }: { username: string }) {
   const panes = [
     { value: "pulses", label: "Pulses", feed: pulses, empty: "No pulses yet" },
     { value: "replies", label: "Replies", feed: replies, empty: "No replies yet" },
-    // Only shown once there is an archive to show, so accounts without a
-    // channel are not given an empty tab.
-    ...(channel.items.length > 0
-      ? [
-          {
-            value: "channel",
-            label: "Channel",
-            feed: channel,
-            empty: "Nothing imported yet",
-          },
-        ]
-      : []),
     { value: "media", label: "Media", feed: media, empty: "No images yet" },
     { value: "likes", label: "Likes", feed: likes, empty: "No likes yet" },
   ];
 
   return (
     <Tabs value={tab} onValueChange={setTab}>
-      <TabsList className="no-scrollbar sticky top-[57px] z-20 overflow-x-auto">
+      <TabsList className="sticky top-[57px] z-20">
         {panes.map((pane) => (
-          <TabsTrigger key={pane.value} value={pane.value} className="min-w-[5rem]">
+          <TabsTrigger key={pane.value} value={pane.value}>
             {pane.label}
           </TabsTrigger>
         ))}

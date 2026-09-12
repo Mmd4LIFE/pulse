@@ -229,19 +229,6 @@ async def user_media(
     return await _page(db, rows, cursor, viewer)
 
 
-@router.get("/{username}/channel", response_model=Page[PulseOut])
-async def user_channel_archive(
-    username: str, db: DbSession, viewer: OptionalUser, paging: Paging
-) -> Page[PulseOut]:
-    """Posts imported from this account's Telegram channel."""
-    target = await user_service.get_by_username(db, username)
-    await _gate(db, target, viewer)
-    rows, cursor = await timelines.channel_archive(
-        db, target, viewer, paging.limit, paging.cursor
-    )
-    return await _page(db, rows, cursor, viewer)
-
-
 @router.get("/{username}/likes", response_model=Page[PulseOut])
 async def user_likes(
     username: str, db: DbSession, viewer: OptionalUser, paging: Paging

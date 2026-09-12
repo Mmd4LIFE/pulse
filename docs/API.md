@@ -70,7 +70,6 @@ rather than failing or double-counting.
 | `POST`/`DELETE` | `/users/{username}/block` | A block drops the follow edges both ways. |
 | `GET` | `/users/{username}/followers` · `/following` | |
 | `GET` | `/users/{username}/pulses` · `/replies` · `/media` · `/likes` | |
-| `GET` | `/users/{username}/channel` | Posts imported from their Telegram channel. |
 | `GET` | `/users/suggestions` | |
 | `PUT` | `/users/me/privacy` | `{ "is_private": true }`. Going public approves everyone waiting. |
 | `GET` | `/users/me/follow-requests` · `/count` | Pending requests to follow you. |
@@ -90,26 +89,6 @@ provoking the error.
 | `PUT` | `/channels/me` | `{ "reference": "@yourchannel" }`. Also accepts a t.me link or a `-100…` id. |
 | `DELETE` | `/channels/me` | |
 | `POST` | `/channels/me/test` | Posts a short message to prove the link works. |
-| `POST` | `/channels/me/import` | Multipart upload of a Telegram Desktop export. Returns 202; watch `import_status` on `/channels/me`. |
-| `POST` | `/channels/me/import/reset` | Clears a stuck import so another can start. |
-
-### Importing a channel's history
-
-The Bot API has no method to read a chat's past — it only delivers updates from
-the moment the bot is added — so history cannot be pulled with the bot token.
-It comes instead from the export Telegram Desktop produces (channel → ⋮ →
-Export chat history → JSON). Upload the zipped folder to bring images along, or
-the bare `result.json` for text and reactions.
-
-The export's channel id is checked against the connected channel, so an export
-from somebody else's channel is refused. Re-importing updates the posts already
-stored rather than duplicating them.
-
-Imported posts are deliberately kept out of home, explore, search and trends —
-a backfill of thousands of posts would otherwise bury every follower's
-timeline. They live on the author's profile under `/users/{username}/channel`,
-carry their original post dates, and keep the channel's reaction tallies
-separate from Pulse's own likes.
 
 Connecting verifies through the Bot API that the channel exists, is a channel
 rather than a group, and that the bot is an administrator there with
