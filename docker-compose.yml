@@ -120,6 +120,11 @@ services:
       REDIS_URL: redis://redis:6379/0
       MEDIA_ROOT: /data/media
     command: ["python", "-m", "app.workers.personas"]
+    # It shares the API's image, whose healthcheck curls an HTTP port. This
+    # process serves none, so it would report unhealthy for ever -- a false
+    # signal that hides a real one.
+    healthcheck:
+      disable: true
     volumes:
       - media:/data/media
     depends_on:
@@ -130,12 +135,14 @@ services:
     networks: [pulsenet]
 
   nginx:
-    image: nginx:1.27-alpine
+    # Built rather than bind-mounted, so a config change reaches the running
+    # container. See nginx/Dockerfile.
+    build:
+      context: ./nginx
     restart: unless-stopped
     ports:
       - "127.0.0.1:${WEB_PORT:-8094}:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - media:/var/www/media:ro
     depends_on:
       - api
