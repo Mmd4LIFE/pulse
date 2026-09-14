@@ -109,6 +109,28 @@ export interface AppNotification {
   created_at: string;
 }
 
+/** One row of the inbox: a thing that happened, and everyone who did it. */
+export interface NotificationGroup {
+  key: string;
+  type: NotificationType;
+  /** Only the faces the row shows. */
+  actors: UserSummary[];
+  /** How many there really were, which "and N others" counts from. */
+  actor_count: number;
+  pulse: PulseRef | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export type NotificationTab = "all" | "mentions" | "requests";
+
+export interface UnreadCounts {
+  all: number;
+  mentions: number;
+  requests: number;
+  total: number;
+}
+
 export interface Trend {
   tag: string;
   pulse_count: number;

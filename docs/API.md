@@ -102,9 +102,27 @@ silently dropping posts later. A channel can belong to one account only.
 | `GET` | `/search?q=` | Blended users + pulses + hashtags. |
 | `GET` | `/search/users?q=` · `/search/pulses?q=` | Paged. |
 | `GET` | `/search/mentions?q=` | Composer autocomplete. Ranked for mentions: exact handle, then accounts you follow, then reach. A bare `q=` returns the accounts you follow. |
-| `GET` | `/notifications` | `?unread_only=true`, `?kind=like&kind=reply`. |
-| `GET` | `/notifications/unread-count` | |
-| `POST` | `/notifications/read-all` | |
+| `GET` | `/notifications?tab=` | `all`, `mentions` or `requests`. Rows arrive grouped. |
+| `GET` | `/notifications/unread-count` | One number, for the tab-bar badge. |
+| `GET` | `/notifications/unread` | Unread per tab, so each tab can carry its own. |
+| `POST` | `/notifications/read-all?tab=` | One tab, or the whole inbox when no tab is named. |
+
+### How the inbox is grouped
+
+A notification is stored per action, which is the right way to record them and
+the wrong way to read them: forty people liking one pulse is one thing that
+happened. Rows are therefore grouped on `(type, pulse, day)`, which needs no
+special-casing per kind because of what each kind points at — a like points at
+the pulse it was made on, so they collapse; a reply points at the *new* pulse,
+which is unique, so it stays its own row. The day in the key stops "5 people
+liked this" quietly becoming "200 people, at some point, ever".
+
+Each row carries a few `actors` and the true `actor_count`, which is what
+"and 12 others" is counted from.
+
+Follow requests are excluded from `all` and are never grouped: a queue of
+decisions is not a record of events, and three collapsed into one row would
+mean one row carrying six buttons.
 
 ## Media
 

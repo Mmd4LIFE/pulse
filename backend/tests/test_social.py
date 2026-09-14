@@ -128,7 +128,7 @@ async def test_interactions_raise_notifications(client, make_user, as_user) -> N
     inbox = (await client.get("/api/v1/notifications", headers=as_user(author))).json()
     kinds = {n["type"] for n in inbox["items"]}
     assert kinds == {"like", "reply", "follow"}
-    assert all(n["actor"]["username"] == "fan" for n in inbox["items"])
+    assert all(n["actors"][0]["username"] == "fan" for n in inbox["items"])
 
     unread = (
         await client.get("/api/v1/notifications/unread-count", headers=as_user(author))

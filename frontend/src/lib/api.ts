@@ -7,16 +7,18 @@
  */
 
 import type {
-  AppNotification,
   AuthResponse,
   ConnectedChannel,
   MediaItem,
+  NotificationGroup,
+  NotificationTab,
   Page,
   Pulse,
   SearchResults,
   Thread,
   TokenPair,
   Trend,
+  UnreadCounts,
   UserMe,
   UserPublic,
   UserSummary,
@@ -311,10 +313,14 @@ export const api = {
   suggestMentions: (q: string, limit = 6) =>
     request<UserSummary[]>(`/search/mentions${query({ q, limit })}`),
 
-  notifications: (p: PageQuery = {}) =>
-    request<Page<AppNotification>>(`/notifications${query({ ...p })}`),
+  notifications: (tab: NotificationTab, p: PageQuery = {}) =>
+    request<Page<NotificationGroup>>(`/notifications${query({ tab, ...p })}`),
   unreadCount: () => request<{ count: number }>("/notifications/unread-count"),
-  markAllRead: () => request<{ count: number }>("/notifications/read-all", { method: "POST" }),
+  unreadByTab: () => request<UnreadCounts>("/notifications/unread"),
+  markAllRead: (tab?: NotificationTab) =>
+    request<{ count: number }>(`/notifications/read-all${query({ tab })}`, {
+      method: "POST",
+    }),
 
   // --- media --------------------------------------------------------------
   uploadImage: (file: File, altText?: string) => {

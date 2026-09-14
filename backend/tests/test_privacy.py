@@ -81,8 +81,10 @@ async def test_following_a_protected_account_creates_a_request(
     ).json()
     assert [u["username"] for u in pending["items"]] == ["fan"]
 
-    inbox = (await client.get("/api/v1/notifications", headers=as_user(owner))).json()
-    assert [n["type"] for n in inbox["items"]] == ["follow_request"]
+    queue = (
+        await client.get("/api/v1/notifications?tab=requests", headers=as_user(owner))
+    ).json()
+    assert [n["type"] for n in queue["items"]] == ["follow_request"]
 
 
 async def test_approving_a_request_grants_access(client, make_user, as_user) -> None:
@@ -271,15 +273,23 @@ async def test_approving_turns_the_request_notification_into_a_follow(
     await protect(client, owner, as_user)
     await client.post("/api/v1/users/owner/follow", headers=as_user(fan))
 
-    inbox = (await client.get("/api/v1/notifications", headers=as_user(owner))).json()
-    assert [n["type"] for n in inbox["items"]] == ["follow_request"]
+    queue = (
+        await client.get("/api/v1/notifications?tab=requests", headers=as_user(owner))
+    ).json()
+    assert [n["type"] for n in queue["items"]] == ["follow_request"]
 
     await client.post(
         "/api/v1/users/me/follow-requests/fan/approve", headers=as_user(owner)
     )
 
+    # Gone from the queue of decisions...
+    queue = (
+        await client.get("/api/v1/notifications?tab=requests", headers=as_user(owner))
+    ).json()
+    assert queue["items"] == []
+
+    # ...and now among the things that happened, saying what is true.
     inbox = (await client.get("/api/v1/notifications", headers=as_user(owner))).json()
-    # One row still, but it now says what is true: they follow.
     assert [n["type"] for n in inbox["items"]] == ["follow"]
 
 
@@ -311,7 +321,7 @@ async def test_the_requester_is_told_their_request_was_accepted(
 
     inbox = (await client.get("/api/v1/notifications", headers=as_user(fan))).json()
     assert [n["type"] for n in inbox["items"]] == ["follow_accepted"]
-    assert inbox["items"][0]["actor"]["username"] == "owner"
+    assert inbox["items"][0]["actors"][0]["username"] == "owner"
 
 
 async def test_a_declined_requester_is_told_nothing(client, make_user, as_user) -> None:
