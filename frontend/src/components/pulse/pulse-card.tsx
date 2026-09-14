@@ -47,8 +47,13 @@ export function PulseCard({
     <article
       onClick={isDetail ? undefined : open}
       className={cn(
-        "relative border-b border-border px-4 py-3 transition-colors",
-        !isDetail && "cursor-pointer hover:bg-accent/40 active:bg-accent/60",
+        "surface relative mx-3 mb-3 px-4 py-3.5 transition-all",
+        !isDetail &&
+          "cursor-pointer hover:-translate-y-px hover:shadow-[var(--shadow-raised)] active:translate-y-0",
+        // A reply chain reads as one conversation, so its cards sit closer
+        // together than separate pulses in a feed do.
+        connected && "mb-1.5",
+        isDetail && "mb-3",
         className,
       )}
     >
@@ -165,7 +170,7 @@ function QuotedPulse({ quote }: { quote: PulseRef }) {
 
   if (quote.is_deleted) {
     return (
-      <div className="mt-3 rounded-2xl border border-border px-3.5 py-3 text-sm text-muted-foreground">
+      <div className="mt-3 rounded-2xl border border-border bg-secondary/40 px-3.5 py-3 text-sm text-muted-foreground">
         This pulse was deleted.
       </div>
     );
@@ -182,7 +187,7 @@ function QuotedPulse({ quote }: { quote: PulseRef }) {
       onKeyDown={(event) => {
         if (event.key === "Enter") router.push(`/pulse/${quote.id}`);
       }}
-      className="mt-3 cursor-pointer rounded-2xl border border-border px-3.5 py-3 transition-colors hover:bg-accent/40"
+      className="mt-3 cursor-pointer rounded-2xl border border-border bg-secondary/40 px-3.5 py-3 transition-colors hover:bg-secondary/70"
     >
       <div className="flex items-center gap-1.5 text-sm">
         <UserAvatar user={quote.author} className="h-5 w-5" linked={false} />

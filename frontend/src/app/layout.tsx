@@ -56,10 +56,8 @@ export const viewport: Viewport = {
   maximumScale: 1,
   // Telegram's webview keeps its own chrome; let the app paint edge to edge.
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0b1016" },
-  ],
+  // One theme, so one colour. Matches --background in globals.css.
+  themeColor: "#f2f4f8",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

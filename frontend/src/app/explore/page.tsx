@@ -78,12 +78,12 @@ export default function ExplorePage() {
 
         <TabsContent value="trends">
           {trends.data && trends.data.length > 0 ? (
-            <ul>
+            <ul className="pt-3">
               {trends.data.map((trend) => (
                 <li key={trend.tag}>
                   <Link
                     href={`/tag/${encodeURIComponent(trend.tag)}`}
-                    className="flex items-center gap-3 border-b border-border px-4 py-3.5 transition-colors hover:bg-accent/40"
+                    className="surface mx-3 mb-3 flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-accent/30"
                   >
                     <span className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-muted-foreground">
                       <TrendingUp className="h-4 w-4" />

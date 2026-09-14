@@ -92,15 +92,15 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
   const follow = useFollow();
 
   return (
-    <section>
-      <div className="h-28 w-full bg-gradient-to-br from-primary/25 via-primary/10 to-secondary" />
+    <section className="surface mx-3 mb-3 mt-3 overflow-hidden p-0">
+      <div className="h-28 w-full bg-gradient-to-br from-primary/30 via-primary/12 to-secondary" />
 
       <div className="px-4 pb-4">
         <div className="flex items-end justify-between">
           <UserAvatar
             user={user}
             linked={false}
-            className="-mt-10 h-20 w-20 border-4 border-background"
+            className="-mt-10 h-20 w-20 border-4 border-card shadow-sm"
           />
           {!isMe ? (
             <Button
@@ -205,7 +205,7 @@ function ProfileHeader({ user, isMe }: { user: UserPublic; isMe: boolean }) {
 function ProtectedNotice({ user }: { user: UserPublic }) {
   return (
     <EmptyState
-      className="border-t border-border"
+      className="mx-3 mt-3 surface"
       icon={<Lock className="h-10 w-10" />}
       title="These pulses are protected"
       hint={

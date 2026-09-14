@@ -30,7 +30,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav className="sticky bottom-0 z-30 mt-auto border-t border-border bg-background/90 backdrop-blur-xl safe-bottom">
+    <nav className="sticky bottom-0 z-30 mt-auto bg-card/95 backdrop-blur-xl safe-bottom shadow-[0_-1px_0_hsl(var(--border)),0_-8px_24px_-16px_hsl(222_30%_20%/0.16)]">
       <ul className="mx-auto flex max-w-[600px] items-stretch">
         {items.map(({ href, label, icon: Icon, badge }) => {
           const active =

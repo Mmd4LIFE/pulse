@@ -116,7 +116,7 @@ export default function NotificationsPage() {
           hint="Likes, replies and new followers will show up here."
         />
       ) : (
-        <ul>
+        <ul className="pt-3">
           {feed.items.map((item) => (
             <li key={item.id}>
               <NotificationRow notification={item} />
@@ -165,7 +165,7 @@ function NotificationRow({ notification }: { notification: AppNotification }) {
     <Link
       href={href}
       className={cn(
-        "flex gap-3 border-b border-border px-4 py-3.5 transition-colors hover:bg-accent/40",
+        "surface mx-3 mb-3 flex gap-3 px-4 py-3.5 transition-colors hover:bg-accent/30",
         !notification.is_read && "bg-primary/[0.06]",
       )}
     >

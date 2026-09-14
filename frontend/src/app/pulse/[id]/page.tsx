@@ -66,7 +66,7 @@ export default function ThreadPage() {
       <button
         type="button"
         onClick={() => setReplying(true)}
-        className="flex w-full items-center gap-3 border-b border-border px-4 py-3.5 text-left transition-colors hover:bg-accent/40"
+        className="surface mx-3 mb-3 flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-accent/30"
       >
         {user ? <UserAvatar user={user} className="h-9 w-9" linked={false} /> : null}
         <span className="text-base text-muted-foreground">
@@ -113,7 +113,7 @@ function EngagementBar({
   if (stats.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-x-5 gap-y-1 border-b border-border px-4 py-3 text-sm">
+    <div className="surface mx-3 mb-3 flex flex-wrap gap-x-5 gap-y-1 px-4 py-3 text-sm">
       {stats.map((stat) => (
         <span key={stat.label}>
           <span className="font-bold tabular-nums">{compactNumber(stat.value)}</span>{" "}

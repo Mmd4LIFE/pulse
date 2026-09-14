@@ -8,6 +8,9 @@
 
 import type { TelegramWebApp } from "@/types/telegram";
 
+/** Matches --background in globals.css, which the client cannot read. */
+const APP_BACKGROUND = "#f2f4f8";
+
 export function getWebApp(): TelegramWebApp | null {
   if (typeof window === "undefined") return null;
   return window.Telegram?.WebApp ?? null;
@@ -113,49 +116,23 @@ export function openExternal(url: string): void {
 }
 
 /**
- * Map Telegram's theme onto the CSS custom properties the UI is built from,
- * so the app takes on the colours of whatever client it is opened in.
+ * Tell the Telegram client what the app looks like.
+ *
+ * Pulse has one theme, so there is nothing to detect and nothing to follow.
+ * The client still needs to be told, or its own header and background stay in
+ * whatever theme the user has set and the app appears to float in a strip of
+ * someone else's colour.
  */
-export function applyTelegramTheme(): "light" | "dark" {
+export function applyTelegramTheme(): void {
   const app = getWebApp();
-  const root = document.documentElement;
+  if (!app) return;
 
-  // The Telegram script loads in an ordinary browser too, where it reports a
-  // hardcoded "light" scheme. Only believe it when there is signed initData,
-  // which is the one signal that we really are inside a Telegram client.
-  const scheme = isInsideTelegram() ? app!.colorScheme : preferredScheme();
-  root.classList.toggle("dark", scheme === "dark");
-
-  const params = isInsideTelegram() ? app?.themeParams : undefined;
-  if (params) {
-    const set = (name: string, value?: string) => {
-      if (value) root.style.setProperty(name, value);
-    };
-    set("--tg-bg", params.bg_color);
-    set("--tg-text", params.text_color);
-    set("--tg-hint", params.hint_color);
-    set("--tg-link", params.link_color);
-    set("--tg-button", params.button_color);
-    set("--tg-button-text", params.button_text_color);
-    set("--tg-secondary-bg", params.secondary_bg_color);
+  try {
+    app.setHeaderColor(APP_BACKGROUND);
+    app.setBackgroundColor(APP_BACKGROUND);
+  } catch {
+    /* older client */
   }
-
-  // Match the Telegram header to the app background so the seam disappears.
-  if (isInsideTelegram()) {
-    try {
-      app?.setHeaderColor(scheme === "dark" ? "#0b1016" : "#ffffff");
-      app?.setBackgroundColor(scheme === "dark" ? "#0b1016" : "#ffffff");
-    } catch {
-      /* older client */
-    }
-  }
-
-  return scheme;
-}
-
-function preferredScheme(): "light" | "dark" {
-  if (typeof window === "undefined") return "light";
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 /** Publish the usable viewport height as a CSS variable for full-height layouts. */

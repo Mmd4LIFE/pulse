@@ -40,7 +40,7 @@ export function TextSizeCard() {
     <section className="space-y-3">
       <h2 className="text-sm font-semibold">Text size</h2>
 
-      <div className="space-y-3 rounded-xl border border-border p-4">
+      <div className="surface space-y-3 p-4">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground">
             <Type className="h-5 w-5" />

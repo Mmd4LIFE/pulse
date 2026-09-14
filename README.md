@@ -27,9 +27,10 @@ No install, no signup: it opens inside Telegram and you are already signed in.
 | **Blocking** | Hides both accounts from each other everywhere |
 | **Profiles** | Editable handle, bio, location, website; Pulses / Replies / Media / Likes tabs |
 
-The interface follows the host client: it reads Telegram's colour scheme and
-theme parameters, uses the native back button, haptics and confirm dialogs, and
-respects the safe-area insets.
+The interface is a single light theme, built as a stack of rounded cards on a
+tinted page rather than rows divided by hairlines. It uses the native back
+button, haptics and confirm dialogs, tells the Telegram client what colour it
+is so the chrome matches, and respects the safe-area insets.
 
 ## How authentication works
 

@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function PulseSkeleton() {
   return (
-    <div className="flex gap-3 border-b border-border px-4 py-3.5">
+    <div className="surface mx-3 mb-3 flex gap-3 px-4 py-3.5">
       <Skeleton className="h-11 w-11 shrink-0 rounded-full" />
       <div className="flex-1 space-y-2.5 py-0.5">
         <Skeleton className="h-3.5 w-40" />

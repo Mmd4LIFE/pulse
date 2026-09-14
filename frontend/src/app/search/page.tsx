@@ -108,12 +108,12 @@ function SearchScreen() {
 
           <TabsContent value="tags">
             {results.data?.hashtags.length ? (
-              <ul>
+              <ul className="pt-3">
                 {results.data.hashtags.map((tag) => (
                   <li key={tag.tag}>
                     <Link
                       href={`/tag/${encodeURIComponent(tag.tag)}`}
-                      className="block border-b border-border px-4 py-3.5 transition-colors hover:bg-accent/40"
+                      className="surface mx-3 mb-3 block px-4 py-3.5 transition-colors hover:bg-accent/30"
                     >
                       <span className="block font-bold">#{tag.tag}</span>
                       <span className="text-xs text-muted-foreground">

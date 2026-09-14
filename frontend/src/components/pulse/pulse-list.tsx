@@ -55,7 +55,7 @@ export function PulseList({
 
   if (isLoading) {
     return (
-      <div>
+      <div className="pt-3">
         {Array.from({ length: 5 }).map((_, index) => (
           <PulseSkeleton key={index} />
         ))}
@@ -84,7 +84,7 @@ export function PulseList({
   }
 
   return (
-    <div>
+    <div className="pt-3">
       {items.map((pulse, index) => (
         <PulseCard
           key={`${pulse.id}-${pulse.repulsed_by?.id ?? "own"}-${index}`}

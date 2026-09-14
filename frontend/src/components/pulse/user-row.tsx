@@ -15,7 +15,7 @@ export function UserRow({ user }: { user: UserPublic }) {
   const isMe = me?.id === user.id;
 
   return (
-    <div className="flex items-start gap-3 border-b border-border px-4 py-3.5">
+    <div className="surface mx-3 mb-3 flex items-start gap-3 px-4 py-3.5">
       <UserAvatar user={user} />
       <div className="min-w-0 flex-1">
         <Link href={`/u/${user.username}`} className="block min-w-0">

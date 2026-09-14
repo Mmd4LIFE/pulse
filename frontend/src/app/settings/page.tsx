@@ -78,8 +78,8 @@ export default function SettingsPage() {
         />
       }
     >
-      <div className="space-y-6 px-4 py-5">
-        <div className="flex items-center gap-4">
+      <div className="space-y-5 px-3 py-4">
+        <div className="surface flex items-center gap-4 px-4 py-4">
           <UserAvatar user={user} linked={false} className="h-16 w-16" />
           <p className="text-sm text-muted-foreground">
             Your picture comes from Telegram and updates automatically.
@@ -144,16 +144,13 @@ export default function SettingsPage() {
           />
         </Field>
 
-        <div className="h-px bg-border" />
         <TextSizeCard />
 
-        <div className="h-px bg-border" />
         <PrivacyCard />
 
-        <div className="h-px bg-border" />
         <ChannelCard />
 
-        <div className="rounded-xl bg-secondary/50 px-4 py-3 text-xs text-muted-foreground">
+        <div className="surface px-4 py-3 text-xs text-muted-foreground">
           Signed in as Telegram ID {user.telegram_id}. Pulse never sees your phone
           number or messages.
         </div>

@@ -69,7 +69,7 @@ export function PrivacyCard() {
         type="button"
         onClick={onToggle}
         disabled={toggle.isPending}
-        className="flex w-full items-center gap-3 rounded-xl border border-border p-4 text-left transition-colors hover:bg-accent/40 disabled:opacity-60"
+        className="surface flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-accent/30 disabled:opacity-60"
       >
         <span
           className={cn(
@@ -109,7 +109,7 @@ export function PrivacyCard() {
       </button>
 
       {user.is_private ? (
-        <div className="rounded-xl border border-border">
+        <div className="surface overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3">
             <span className="text-sm font-semibold">Follow requests</span>
             <span className="text-xs text-muted-foreground">

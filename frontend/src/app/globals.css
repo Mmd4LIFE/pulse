@@ -9,44 +9,50 @@
  */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 213 27% 12%;
+    /*
+     * One theme, light. The page sits on a soft tint so that white cards
+     * lift off it; a pure white page would leave them invisible and the
+     * feed would go back to looking like a list of rows.
+     */
+    --background: 220 33% 96%;
+    --foreground: 222 34% 13%;
 
     --card: 0 0% 100%;
-    --card-foreground: 213 27% 12%;
+    --card-foreground: 222 34% 13%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 213 27% 12%;
+    --popover-foreground: 222 34% 13%;
 
-    --primary: 212 96% 48%;
+    --primary: 222 85% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 213 30% 96%;
-    --secondary-foreground: 213 27% 20%;
+    --secondary: 220 30% 94%;
+    --secondary-foreground: 222 28% 24%;
 
-    --muted: 213 30% 96%;
-    --muted-foreground: 213 12% 45%;
+    --muted: 220 30% 94%;
+    --muted-foreground: 220 12% 46%;
 
-    --accent: 213 32% 94%;
-    --accent-foreground: 213 27% 16%;
+    --accent: 220 40% 93%;
+    --accent-foreground: 222 30% 18%;
 
-    --destructive: 353 84% 52%;
+    --destructive: 353 78% 52%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 213 20% 89%;
-    --input: 213 20% 89%;
-    --ring: 212 96% 48%;
+    --border: 220 24% 89%;
+    --input: 220 24% 89%;
+    --ring: 222 85% 56%;
 
-    --like: 350 87% 58%;
-    --repulse: 152 62% 40%;
+    --like: 348 84% 57%;
+    --repulse: 152 58% 40%;
 
-    --radius: 1rem;
+    --radius: 1.25rem;
 
-    /*
-     * The reader's text size, applied to every font-size token in the Tailwind
-     * config. Set from the account's saved preference on boot; this value is
-     * the small default so the first paint is already correct.
-     */
+    /* Elevation, kept as tokens so every raised surface agrees. */
+    --shadow-card: 0 1px 2px hsl(222 30% 20% / 0.04),
+      0 6px 16px -8px hsl(222 30% 20% / 0.10);
+    --shadow-raised: 0 2px 6px hsl(222 30% 20% / 0.07),
+      0 12px 28px -10px hsl(222 30% 20% / 0.18);
+
     --text-scale: 0.875;
 
     /* Overwritten from Telegram's themeParams when running inside a client. */
@@ -54,49 +60,9 @@
     --tg-safe-top: 0px;
     --tg-safe-bottom: 0px;
 
-    /*
-     * The tab bar's own row, and the padding it adds beneath itself to clear
-     * the home indicator. Anything floating above the bar has to measure
-     * against the total: the compose button previously counted only the
-     * Telegram inset and so sat inside the bar on any device with a home
-     * indicator.
-     */
     --nav-row: 54px;
     --nav-inset: calc(var(--tg-safe-bottom) + env(safe-area-inset-bottom, 0px));
     --nav-height: calc(var(--nav-row) + var(--nav-inset));
-  }
-
-  .dark {
-    --background: 210 33% 6%;
-    --foreground: 210 20% 96%;
-
-    --card: 212 28% 9%;
-    --card-foreground: 210 20% 96%;
-
-    --popover: 212 28% 10%;
-    --popover-foreground: 210 20% 96%;
-
-    --primary: 205 100% 55%;
-    --primary-foreground: 210 40% 4%;
-
-    --secondary: 212 24% 14%;
-    --secondary-foreground: 210 20% 92%;
-
-    --muted: 212 24% 14%;
-    --muted-foreground: 211 14% 60%;
-
-    --accent: 212 24% 16%;
-    --accent-foreground: 210 20% 96%;
-
-    --destructive: 353 84% 58%;
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 212 20% 18%;
-    --input: 212 20% 18%;
-    --ring: 205 100% 55%;
-
-    --like: 350 92% 62%;
-    --repulse: 152 58% 46%;
   }
 
   * {
@@ -128,13 +94,31 @@
 
 @layer components {
   /* The single-column reading surface every screen is built inside. */
+  /* The single column everything is read in. */
   .app-shell {
-    @apply mx-auto flex min-h-[100dvh] w-full max-w-[600px] flex-col border-border bg-background sm:border-x;
+    @apply mx-auto flex min-h-[100dvh] w-full max-w-[600px] flex-col bg-background;
+  }
+
+  /*
+   * A pulse, a profile panel, a settings group: anything that is a discrete
+   * thing rather than a strip of the page. Rounded and lifted, so the feed
+   * reads as a stack of cards instead of rows divided by hairlines.
+   */
+  .surface {
+    @apply rounded-[--radius] border border-border bg-card;
+    box-shadow: var(--shadow-card);
+  }
+
+  .surface-flush {
+    @apply border-x-0 rounded-none;
   }
 
   .sticky-header {
-    @apply sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl;
+    @apply sticky top-0 z-30 bg-background/80 backdrop-blur-xl;
     padding-top: var(--tg-safe-top);
+    /* A shadow rather than a rule: the cards below already have edges, and a
+       hairline on top of them reads as clutter. */
+    box-shadow: 0 1px 0 hsl(var(--border) / 0.9);
   }
 
   .tap-target {

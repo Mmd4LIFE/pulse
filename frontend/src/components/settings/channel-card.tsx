@@ -69,7 +69,7 @@ export function ChannelCard() {
       <h2 className="text-sm font-semibold">Channel</h2>
 
       {connected ? (
-        <div className="space-y-3 rounded-xl border border-border p-4">
+        <div className="surface space-y-3 p-4">
           <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
               <Megaphone className="h-5 w-5" />
@@ -127,7 +127,7 @@ export function ChannelCard() {
           </div>
         </div>
       ) : (
-        <div className="space-y-3 rounded-xl border border-border p-4">
+        <div className="surface space-y-3 p-4">
           <p className="text-xs leading-relaxed text-muted-foreground">
             Mirror your pulses to a channel you run. First add{" "}
             <span className="font-semibold text-foreground">{BOT_NAME}</span> to the

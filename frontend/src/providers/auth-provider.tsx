@@ -14,7 +14,6 @@ import { ApiError, api, tokens } from "@/lib/api";
 import { applyTextSize, cachedTextSize, isTextSize } from "@/lib/text-size";
 import {
   applyTelegramTheme,
-  getWebApp,
   initialiseWebApp,
   trackViewport,
   waitForWebApp,
@@ -73,17 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     applyTextSize(cachedTextSize());
     const stopTracking = trackViewport();
 
-    const app = getWebApp();
-    const onTheme = () => applyTelegramTheme();
-    app?.onEvent("themeChanged", onTheme);
-
-    // Outside Telegram the OS preference is what drives the theme, so follow it.
-    const media = window.matchMedia?.("(prefers-color-scheme: dark)");
-    media?.addEventListener("change", onTheme);
-
     return () => {
-      app?.offEvent("themeChanged", onTheme);
-      media?.removeEventListener("change", onTheme);
       stopTracking();
     };
   }, []);
