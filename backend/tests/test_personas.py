@@ -522,3 +522,28 @@ async def test_a_turn_survives_a_rollback_earlier_in_it(
     # Everything after the rollback must still work.
     pulse = await ps.write_post(db, persona)
     assert pulse is not None and pulse.content == "Generated text"
+
+
+async def test_a_tick_does_nothing_while_generation_is_off(
+    db, model, monkeypatch
+) -> None:
+    """Every caller is covered, including run-once, not just the worker loop."""
+    from app.workers.personas import tick
+
+    model(IDENTITY, "A post")
+    for _ in range(3):
+        await ps.create_persona(db, topic="type design")
+
+    called = False
+
+    async def must_not_run(session, persona):
+        nonlocal called
+        called = True
+        return {"posted": 0, "replied": 0, "liked": 0, "repulsed": 0}
+
+    monkeypatch.setattr("app.workers.personas.persona_service.act", must_not_run)
+    monkeypatch.setattr("app.workers.personas.ai.is_configured", lambda: False)
+
+    totals = await tick()
+    assert totals["accounts"] == 0
+    assert called is False, "accounts were given turns with generation switched off"

@@ -28,6 +28,12 @@ async def tick() -> dict[str, int]:
     """One pass over the active accounts."""
     totals = {"accounts": 0, "posted": 0, "replied": 0, "liked": 0, "repulsed": 0}
 
+    # Checked here rather than only in the loop below, so every caller is
+    # covered -- including the run-once command, which would otherwise walk the
+    # whole population and record a generation error against each account.
+    if not ai.is_configured():
+        return totals
+
     async with SessionLocal() as db:
         used = await persona_service.generations_today(db)
         if used >= settings.AI_MAX_GENERATIONS_PER_DAY:
@@ -95,13 +101,13 @@ async def main() -> None:
     log.info("persona_worker_started", tick_seconds=settings.AI_TICK_SECONDS)
 
     while not stopping.is_set():
-        if ai.is_configured():
-            try:
-                totals = await tick()
-                if totals["accounts"]:
-                    log.info("persona_tick", **totals)
-            except Exception as exc:
-                log.exception("persona_tick_failed", error=str(exc))
+        try:
+            # A no-op while generation is switched off; the guard lives in tick.
+            totals = await tick()
+            if totals["accounts"]:
+                log.info("persona_tick", **totals)
+        except Exception as exc:
+            log.exception("persona_tick_failed", error=str(exc))
 
         with contextlib.suppress(asyncio.TimeoutError):
             await asyncio.wait_for(stopping.wait(), timeout=settings.AI_TICK_SECONDS)

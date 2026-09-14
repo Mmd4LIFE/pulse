@@ -60,7 +60,22 @@ docker compose exec worker python -m app.cli run-once         # one tick now
 Useful flags on `create`: `--every` (minutes between posts), `--reply-chance`,
 `--like-chance`, `--repulse-chance`, `--post-now`.
 
-To stop everything at once:
+## Switching it off
+
+Set `AI_ENABLED=false` and restart the worker. That is the whole switch: no
+generation runs, the key is never read, and the worker idles. The accounts and
+everything they have already posted stay exactly where they are, and setting
+the flag back to `true` picks up where it left off.
+
+```bash
+sed -i 's/^AI_ENABLED=.*/AI_ENABLED=false/' .env
+docker compose up -d worker      # or: docker compose stop worker
+```
+
+The guard sits in the worker's `tick`, so it covers the `run-once` command as
+well as the loop, not only one of them.
+
+To stop only some accounts, or to stop them permanently:
 
 ```bash
 docker compose exec -T db psql -U pulse -d pulse -c "UPDATE personas SET is_active = false;"
