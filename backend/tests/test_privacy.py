@@ -265,10 +265,10 @@ async def test_the_owner_sees_a_count_of_waiting_requests(
     assert me["pending_follow_requests"] == 1
 
 
-async def test_approving_turns_the_request_notification_into_a_follow(
+async def test_approving_clears_the_request_from_the_inbox(
     client, make_user, as_user
 ) -> None:
-    """The inbox must reflect what happened, not what was once asked."""
+    """An answered request leaves, the same way a declined one does."""
     owner, fan = await make_user("owner"), await make_user("fan")
     await protect(client, owner, as_user)
     await client.post("/api/v1/users/owner/follow", headers=as_user(fan))
@@ -288,9 +288,13 @@ async def test_approving_turns_the_request_notification_into_a_follow(
     ).json()
     assert queue["items"] == []
 
-    # ...and now among the things that happened, saying what is true.
+    # ...and not resurfacing elsewhere as something they did unprompted.
     inbox = (await client.get("/api/v1/notifications", headers=as_user(owner))).json()
-    assert [n["type"] for n in inbox["items"]] == ["follow"]
+    assert inbox["items"] == []
+
+    # The outcome lives where it belongs: they are a follower now.
+    profile = (await client.get("/api/v1/users/owner", headers=as_user(owner))).json()
+    assert profile["followers_count"] == 1
 
 
 async def test_declining_removes_the_request_from_the_inbox(

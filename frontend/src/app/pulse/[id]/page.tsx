@@ -61,7 +61,13 @@ export default function ThreadPage() {
       <EngagementBar pulse={pulse} />
 
       {replies.length > 0 ? (
-        replies.map((reply) => <PulseCard key={reply.id} pulse={reply} />)
+        <Replies count={pulse.reply_count}>
+          {replies.map((reply) => (
+            <ReplyRow key={reply.id}>
+              <PulseCard pulse={reply} variant="reply" />
+            </ReplyRow>
+          ))}
+        </Replies>
       ) : (
         <EmptyState
           icon={<MessageCircle className="h-9 w-9" />}
@@ -82,6 +88,46 @@ export default function ThreadPage() {
         onPosted={() => thread.refetch()}
       />
     </AppFrame>
+  );
+}
+
+/**
+ * The conversation, hung off the pulse above it.
+ *
+ * A rail runs down the left from under the main card and each reply reaches
+ * out to it, so replies read as belonging to the pulse rather than as more
+ * feed. The cards themselves are a size quieter for the same reason.
+ */
+function Replies({
+  count,
+  children,
+}: {
+  count: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="relative mx-3 mb-3 pl-6">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -top-2 bottom-6 left-[9px] w-px bg-border"
+      />
+      <h2 className="mb-2.5 text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+        {compactNumber(count)} {count === 1 ? "Reply" : "Replies"}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+function ReplyRow({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute left-[-15px] top-7 h-px w-[15px] bg-border"
+      />
+      {children}
+    </div>
   );
 }
 

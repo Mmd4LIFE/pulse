@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import re
 from datetime import UTC, datetime
-from typing import Any
 
-import httpx
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.botapi import TelegramApiError
+from app.core.botapi import call as _call
 from app.core.config import settings
 from app.core.errors import ConflictError, NotFoundError, ValidationError
 from app.core.logging import get_logger
@@ -24,42 +24,9 @@ from app.models import Channel, Pulse, User
 
 log = get_logger(__name__)
 
-API_ROOT = "https://api.telegram.org"
-TIMEOUT = httpx.Timeout(10.0, connect=5.0)
-
 USERNAME_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{3,31}$")
 # -100… for channels and supergroups.
 CHAT_ID_RE = re.compile(r"^-100\d{5,}$")
-
-
-class TelegramApiError(Exception):
-    """A call to the Bot API failed."""
-
-    def __init__(self, description: str, *, status: int | None = None) -> None:
-        self.description = description
-        self.status = status
-        super().__init__(description)
-
-
-async def _call(method: str, payload: dict[str, Any]) -> dict[str, Any]:
-    url = f"{API_ROOT}/bot{settings.TELEGRAM_BOT_TOKEN}/{method}"
-    try:
-        async with httpx.AsyncClient(timeout=TIMEOUT) as client:
-            response = await client.post(url, json=payload)
-    except httpx.HTTPError as exc:
-        raise TelegramApiError(f"Could not reach Telegram: {exc}") from exc
-
-    try:
-        body = response.json()
-    except ValueError as exc:
-        raise TelegramApiError("Telegram returned an unreadable response") from exc
-
-    if not body.get("ok"):
-        raise TelegramApiError(
-            str(body.get("description") or "Telegram rejected the request"),
-            status=response.status_code,
-        )
-    return body.get("result") or {}
 
 
 def normalise_reference(reference: str) -> str:

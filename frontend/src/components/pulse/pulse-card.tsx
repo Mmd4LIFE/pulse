@@ -1,6 +1,12 @@
 "use client";
 
-import { Megaphone, MoreHorizontal, Repeat2, Trash2, UserX } from "lucide-react";
+import {
+  Megaphone,
+  MoreHorizontal,
+  Repeat2,
+  Trash2,
+  UserX,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import * as React from "react";
@@ -25,8 +31,12 @@ import { toast } from "sonner";
 
 interface Props {
   pulse: Pulse;
-  /** Renders the pulse as the focused item of a thread: bigger, no truncation. */
-  variant?: "timeline" | "detail";
+  /**
+   * ``detail`` is the focused pulse of a thread: bigger, no truncation.
+   * ``reply`` is one step quieter than a timeline card, so a conversation
+   * reads as subordinate to the pulse it hangs from.
+   */
+  variant?: "timeline" | "detail" | "reply";
   /** Draws the vertical line that joins this pulse to the reply beneath it. */
   connected?: boolean;
   className?: string;
@@ -40,6 +50,7 @@ export function PulseCard({
 }: Props) {
   const router = useRouter();
   const isDetail = variant === "detail";
+  const isReply = variant === "reply";
 
   const open = () => router.push(`/pulse/${pulse.id}`);
 
@@ -50,6 +61,9 @@ export function PulseCard({
         "surface relative mx-3 mb-3 px-4 py-3.5 transition-all",
         !isDetail &&
           "cursor-pointer hover:-translate-y-px hover:shadow-[var(--shadow-raised)] active:translate-y-0",
+        // Replies sit inside a rail that already provides the gutter, so they
+        // drop the page margin and shrink a notch all round.
+        isReply && "mx-0 mb-2 px-3.5 py-2.5",
         // A reply chain reads as one conversation, so its cards sit closer
         // together than separate pulses in a feed do.
         connected && "mb-1.5",
@@ -71,10 +85,21 @@ export function PulseCard({
       ) : null}
 
       <div className={cn("flex gap-3", isDetail && "flex-col gap-3")}>
-        <div className={cn("relative flex flex-col items-center", isDetail && "hidden")}>
-          <UserAvatar user={pulse.author} />
+        <div
+          className={cn(
+            "relative flex flex-col items-center",
+            isDetail && "hidden",
+          )}
+        >
+          <UserAvatar
+            user={pulse.author}
+            className={cn(isReply && "h-9 w-9")}
+          />
           {connected ? (
-            <span className="mt-1 w-0.5 flex-1 rounded-full bg-border" aria-hidden />
+            <span
+              className="mt-1 w-0.5 flex-1 rounded-full bg-border"
+              aria-hidden
+            />
           ) : null}
         </div>
 
@@ -86,6 +111,7 @@ export function PulseCard({
               <div
                 className={cn(
                   "flex min-w-0 items-center gap-1.5 text-base",
+                  isReply && "text-sm",
                   isDetail && "flex-col items-start gap-0",
                 )}
               >
@@ -139,7 +165,10 @@ export function PulseCard({
           ) : null}
 
           <div className="mt-1">
-            <PulseText text={pulse.content} className={cn(isDetail && "text-lg")} />
+            <PulseText
+              text={pulse.content}
+              className={cn(isDetail && "text-lg", isReply && "text-sm")}
+            />
             <MediaGrid media={pulse.media} />
             {pulse.quote_of ? <QuotedPulse quote={pulse.quote_of} /> : null}
           </div>
@@ -192,12 +221,19 @@ function QuotedPulse({ quote }: { quote: PulseRef }) {
       <div className="flex items-center gap-1.5 text-sm">
         <UserAvatar user={quote.author} className="h-5 w-5" linked={false} />
         <bdi className="truncate font-bold">{quote.author.display_name}</bdi>
-        {quote.author.is_verified ? <VerifiedBadge className="h-3.5 w-3.5" /> : null}
-        <span className="truncate text-muted-foreground">@{quote.author.username}</span>
+        {quote.author.is_verified ? (
+          <VerifiedBadge className="h-3.5 w-3.5" />
+        ) : null}
+        <span className="truncate text-muted-foreground">
+          @{quote.author.username}
+        </span>
         <span aria-hidden className="text-muted-foreground">
           ·
         </span>
-        <time className="shrink-0 text-muted-foreground" dateTime={quote.created_at}>
+        <time
+          className="shrink-0 text-muted-foreground"
+          dateTime={quote.created_at}
+        >
           {relativeTime(quote.created_at)}
         </time>
       </div>
@@ -241,7 +277,10 @@ function PulseMenu({ pulse }: { pulse: Pulse }) {
           <MoreHorizontal className="pulse-icon" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" onClick={(event) => event.stopPropagation()}>
+      <DropdownMenuContent
+        align="end"
+        onClick={(event) => event.stopPropagation()}
+      >
         {pulse.is_mine ? (
           <DropdownMenuItem destructive onSelect={onDelete}>
             <Trash2 />

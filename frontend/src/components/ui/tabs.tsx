@@ -29,10 +29,10 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "relative flex-1 whitespace-nowrap px-4 py-3.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent/60 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
-      "data-[state=active]:text-foreground",
-      // The active indicator is an underline that hugs the label.
-      "after:absolute after:inset-x-0 after:bottom-0 after:mx-auto after:h-1 after:w-12 after:rounded-full after:bg-transparent data-[state=active]:after:bg-primary",
+      "relative flex-1 whitespace-nowrap px-4 py-3.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent/60 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+      // The label itself is the indicator: the current tab is the bold, dark
+      // one. Weight carries it, so nothing needs to be drawn underneath.
+      "data-[state=active]:font-bold data-[state=active]:text-foreground",
       className,
     )}
     {...props}

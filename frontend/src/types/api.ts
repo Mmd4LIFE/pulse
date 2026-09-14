@@ -164,3 +164,11 @@ export interface ConnectedChannel {
   last_error: string | null;
   last_posted_at: string | null;
 }
+
+/** A picture of a pulse that Telegram is holding, ready to be placed in a chat. */
+export interface ShareCard {
+  prepared_message_id: string;
+  expires_at: string | null;
+  image_url: string;
+  link: string;
+}

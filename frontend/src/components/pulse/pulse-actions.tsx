@@ -2,11 +2,10 @@
 
 import { Bookmark, Heart, MessageCircle, Repeat2, Share } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 
 import { Composer } from "@/components/pulse/composer";
+import { ShareSheet } from "@/components/pulse/share-sheet";
 import { usePulseActions } from "@/hooks/use-pulse-actions";
-import { openExternal } from "@/lib/telegram";
 import { cn, compactNumber } from "@/lib/utils";
 import type { Pulse } from "@/types/api";
 import * as React from "react";
@@ -20,6 +19,7 @@ export function PulseActions({ pulse }: ActionProps) {
   const router = useRouter();
   const { like, repulse, bookmark } = usePulseActions();
   const [replyOpen, setReplyOpen] = React.useState(false);
+  const [shareOpen, setShareOpen] = React.useState(false);
 
   const stop = (event: React.MouseEvent) => {
     event.preventDefault();
@@ -97,7 +97,7 @@ export function PulseActions({ pulse }: ActionProps) {
           hoverClass="group-hover:bg-primary/10 group-hover:text-primary"
           onClick={(event) => {
             stop(event);
-            void sharePulse(pulse);
+            setShareOpen(true);
           }}
         >
           <Share className="pulse-icon" />
@@ -110,6 +110,15 @@ export function PulseActions({ pulse }: ActionProps) {
         replyTo={pulse}
         onPosted={() => router.refresh()}
       />
+
+      {/* Mounted only once asked for: it renders a full copy of the pulse. */}
+      {shareOpen ? (
+        <ShareSheet
+          pulse={pulse}
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+        />
+      ) : null}
     </>
   );
 }
@@ -139,7 +148,10 @@ function ActionButton({
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      className={cn("group -ml-1.5 flex items-center gap-1 text-xs", active && activeClass)}
+      className={cn(
+        "group -ml-1.5 flex items-center gap-1 text-xs",
+        active && activeClass,
+      )}
     >
       <span
         className={cn(
@@ -154,25 +166,4 @@ function ActionButton({
       ) : null}
     </button>
   );
-}
-
-async function sharePulse(pulse: Pulse) {
-  const url = `${window.location.origin}/pulse/${pulse.id}`;
-  const text = `${pulse.author.display_name} on Pulse`;
-
-  if (navigator.share) {
-    try {
-      await navigator.share({ title: "Pulse", text, url });
-      return;
-    } catch {
-      // The user dismissed the sheet; fall through to copying.
-    }
-  }
-
-  try {
-    await navigator.clipboard.writeText(url);
-    toast.success("Link copied.");
-  } catch {
-    openExternal(url);
-  }
 }

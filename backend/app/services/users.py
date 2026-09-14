@@ -290,17 +290,18 @@ async def _approve(db: AsyncSession, requester_id: int, target_id: int) -> bool:
         .where(User.id == target_id)
         .values(followers_count=User.followers_count + 1)
     )
-    # The pending request in the owner's inbox has been answered. Rewrite it to
-    # say what is now true, rather than leaving "asked to follow you" sitting
-    # there with buttons that no longer do anything.
+    # An answered request leaves the inbox, exactly as a declined one does.
+    #
+    # It used to be rewritten into "they followed you", which reads as
+    # something they did on their own -- when in fact they asked and you said
+    # yes. The outcome is already visible where it belongs: they are in your
+    # followers, and your count went up.
     await db.execute(
-        update(Notification)
-        .where(
+        delete(Notification).where(
             Notification.recipient_id == target_id,
             Notification.actor_id == requester_id,
             Notification.type == NotificationType.FOLLOW_REQUEST,
         )
-        .values(type=NotificationType.FOLLOW, is_read=True)
     )
 
     # And tell the requester they were let in -- which is not the same thing as

@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, BackgroundTasks, status
+from fastapi import APIRouter, BackgroundTasks, File, UploadFile, status
 
 from app.api.deps import CurrentUser, DbSession, OptionalUser, Paging
-from app.core.errors import PermissionDeniedError
+from app.core.botapi import TelegramApiError
+from app.core.errors import PermissionDeniedError, ValidationError
 from app.schemas.common import Message, Page
-from app.schemas.pulse import PulseCreate, PulseOut, ThreadOut
+from app.schemas.pulse import PulseCreate, PulseOut, ShareCardOut, ThreadOut
 from app.services import channels as channel_service
 from app.services import pulses as pulse_service
-from app.services import serializers, timelines
+from app.services import serializers, share, timelines
 from app.services.visibility import may_view_pulse
 
 router = APIRouter(prefix="/pulses", tags=["pulses"])
@@ -139,3 +140,39 @@ async def unbookmark_pulse(pulse_id: int, user: CurrentUser, db: DbSession) -> M
 async def register_view(pulse_id: int, db: DbSession) -> Message:
     await pulse_service.register_view(db, pulse_id)
     return Message(message="Recorded.")
+
+
+@router.post("/{pulse_id}/share-card", response_model=ShareCardOut)
+async def share_pulse_as_picture(
+    pulse_id: int,
+    user: CurrentUser,
+    db: DbSession,
+    file: UploadFile = File(...),
+) -> ShareCardOut:
+    """Hand Telegram a picture of this pulse and get back something to share.
+
+    The client renders the card, because the browser is where the pulse's own
+    fonts and text direction already live. What comes back is an id for
+    ``WebApp.shareMessage``, which opens Telegram's own chat picker.
+    """
+    pulse = await pulse_service.get_pulse(db, pulse_id)
+    await _gate(db, pulse, user)
+
+    data = await file.read(share.CARD_MAX_BYTES + 1)
+    if len(data) > share.CARD_MAX_BYTES:
+        raise ValidationError("That card image is too large to share.")
+
+    image_url = share.store_card(data)
+    try:
+        prepared = await share.prepare_card_message(user, pulse, pulse.author, image_url)
+    except TelegramApiError as exc:
+        raise ValidationError(
+            "Telegram would not prepare that message. Try sharing the link instead."
+        ) from exc
+
+    return ShareCardOut(
+        prepared_message_id=prepared.id,
+        expires_at=prepared.expires_at,
+        image_url=prepared.image_url,
+        link=share.pulse_link(pulse_id),
+    )

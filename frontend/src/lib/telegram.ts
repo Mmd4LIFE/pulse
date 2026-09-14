@@ -29,7 +29,9 @@ export function isInsideTelegram(): boolean {
  * a short wait rather than a misdetected "not in Telegram", which in production
  * means being bounced to a disabled dev login.
  */
-export function waitForWebApp(timeoutMs = 3000): Promise<TelegramWebApp | null> {
+export function waitForWebApp(
+  timeoutMs = 3000,
+): Promise<TelegramWebApp | null> {
   if (typeof window === "undefined") return Promise.resolve(null);
 
   const existing = getWebApp();
@@ -116,6 +118,42 @@ export function openExternal(url: string): void {
 }
 
 /**
+ * Whether this client can open the native chat picker for a prepared message.
+ *
+ * ``shareMessage`` arrived in Bot API 8.0. Older clients still have the app's
+ * own object, so the method has to be looked for rather than assumed, and the
+ * version asked as well: some clients define the name and then reject the call.
+ */
+export function canShareMessage(): boolean {
+  const app = getWebApp();
+  if (!app || typeof app.shareMessage !== "function") return false;
+  try {
+    return app.isVersionAtLeast("8.0");
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Hand a prepared message to Telegram and let the user choose a chat.
+ *
+ * Resolves to whether it was actually sent: closing the picker is a normal
+ * outcome, not a failure, and should leave no error behind.
+ */
+export function shareMessage(preparedMessageId: string): Promise<boolean> {
+  const app = getWebApp();
+  if (!app?.shareMessage) return Promise.reject(new Error("unsupported"));
+
+  return new Promise((resolve, reject) => {
+    try {
+      app.shareMessage!(preparedMessageId, (sent) => resolve(Boolean(sent)));
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * Tell the Telegram client what the app looks like.
  *
  * Pulse has one theme, so there is nothing to detect and nothing to follow.
@@ -142,7 +180,10 @@ export function trackViewport(): () => void {
     const height = app?.viewportStableHeight || window.innerHeight;
     document.documentElement.style.setProperty("--tg-viewport", `${height}px`);
     const inset = app?.contentSafeAreaInset ?? app?.safeAreaInset;
-    document.documentElement.style.setProperty("--tg-safe-top", `${inset?.top ?? 0}px`);
+    document.documentElement.style.setProperty(
+      "--tg-safe-top",
+      `${inset?.top ?? 0}px`,
+    );
     document.documentElement.style.setProperty(
       "--tg-safe-bottom",
       `${inset?.bottom ?? 0}px`,

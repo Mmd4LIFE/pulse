@@ -94,6 +94,15 @@ class ThreadOut(BaseModel):
     replies_next_cursor: str | None = None
 
 
+class ShareCardOut(BaseModel):
+    """A message Telegram is holding for the user to place in a chat."""
+
+    prepared_message_id: str
+    expires_at: datetime | None = None
+    image_url: str
+    link: str
+
+
 class TrendOut(BaseModel):
     tag: str
     pulse_count: int

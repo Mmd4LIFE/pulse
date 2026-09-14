@@ -15,6 +15,7 @@ import type {
   Page,
   Pulse,
   SearchResults,
+  ShareCard,
   Thread,
   TokenPair,
   Trend,
@@ -130,7 +131,10 @@ interface RequestOptions extends Omit<RequestInit, "body"> {
   retry?: boolean;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   const { body, auth = true, retry = true, headers, ...rest } = options;
 
   const finalHeaders = new Headers(headers);
@@ -164,7 +168,9 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (await response.json()) as T;
 }
 
-const query = (params: Record<string, string | number | boolean | null | undefined>) => {
+const query = (
+  params: Record<string, string | number | boolean | null | undefined>,
+) => {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== null && value !== undefined && value !== "") {
@@ -189,7 +195,11 @@ export const api = {
       auth: false,
     }),
 
-  loginForDevelopment: (telegramId: number, username?: string, displayName?: string) =>
+  loginForDevelopment: (
+    telegramId: number,
+    username?: string,
+    displayName?: string,
+  ) =>
     request<AuthResponse>("/auth/dev", {
       method: "POST",
       body: { telegram_id: telegramId, username, display_name: displayName },
@@ -202,14 +212,17 @@ export const api = {
     request<UserMe>("/users/me", { method: "PATCH", body: patch }),
 
   // --- feeds --------------------------------------------------------------
-  homeFeed: (p: PageQuery = {}) => request<Page<Pulse>>(`/feed/home${query({ ...p })}`),
+  homeFeed: (p: PageQuery = {}) =>
+    request<Page<Pulse>>(`/feed/home${query({ ...p })}`),
   exploreFeed: (p: PageQuery = {}) =>
     request<Page<Pulse>>(`/feed/explore${query({ ...p })}`),
   bookmarks: (p: PageQuery = {}) =>
     request<Page<Pulse>>(`/feed/bookmarks${query({ ...p })}`),
   trends: (limit = 10) => request<Trend[]>(`/feed/trends${query({ limit })}`),
   hashtagFeed: (tag: string, p: PageQuery = {}) =>
-    request<Page<Pulse>>(`/feed/hashtag/${encodeURIComponent(tag)}${query({ ...p })}`),
+    request<Page<Pulse>>(
+      `/feed/hashtag/${encodeURIComponent(tag)}${query({ ...p })}`,
+    ),
 
   // --- pulses -------------------------------------------------------------
   createPulse: (input: {
@@ -225,13 +238,18 @@ export const api = {
     request<Thread>(`/pulses/${id}/thread${query({ ...p })}`),
   getReplies: (id: number, p: PageQuery = {}) =>
     request<Page<Pulse>>(`/pulses/${id}/replies${query({ ...p })}`),
-  deletePulse: (id: number) => request<void>(`/pulses/${id}`, { method: "DELETE" }),
+  deletePulse: (id: number) =>
+    request<void>(`/pulses/${id}`, { method: "DELETE" }),
 
   like: (id: number) => request<void>(`/pulses/${id}/like`, { method: "POST" }),
-  unlike: (id: number) => request<void>(`/pulses/${id}/like`, { method: "DELETE" }),
-  repulse: (id: number) => request<void>(`/pulses/${id}/repulse`, { method: "POST" }),
-  unrepulse: (id: number) => request<void>(`/pulses/${id}/repulse`, { method: "DELETE" }),
-  bookmark: (id: number) => request<void>(`/pulses/${id}/bookmark`, { method: "POST" }),
+  unlike: (id: number) =>
+    request<void>(`/pulses/${id}/like`, { method: "DELETE" }),
+  repulse: (id: number) =>
+    request<void>(`/pulses/${id}/repulse`, { method: "POST" }),
+  unrepulse: (id: number) =>
+    request<void>(`/pulses/${id}/repulse`, { method: "DELETE" }),
+  bookmark: (id: number) =>
+    request<void>(`/pulses/${id}/bookmark`, { method: "POST" }),
   unbookmark: (id: number) =>
     request<void>(`/pulses/${id}/bookmark`, { method: "DELETE" }),
 
@@ -239,13 +257,21 @@ export const api = {
   getUser: (username: string) =>
     request<UserPublic>(`/users/${encodeURIComponent(username)}`),
   follow: (username: string) =>
-    request<void>(`/users/${encodeURIComponent(username)}/follow`, { method: "POST" }),
+    request<void>(`/users/${encodeURIComponent(username)}/follow`, {
+      method: "POST",
+    }),
   unfollow: (username: string) =>
-    request<void>(`/users/${encodeURIComponent(username)}/follow`, { method: "DELETE" }),
+    request<void>(`/users/${encodeURIComponent(username)}/follow`, {
+      method: "DELETE",
+    }),
   block: (username: string) =>
-    request<void>(`/users/${encodeURIComponent(username)}/block`, { method: "POST" }),
+    request<void>(`/users/${encodeURIComponent(username)}/block`, {
+      method: "POST",
+    }),
   unblock: (username: string) =>
-    request<void>(`/users/${encodeURIComponent(username)}/block`, { method: "DELETE" }),
+    request<void>(`/users/${encodeURIComponent(username)}/block`, {
+      method: "DELETE",
+    }),
   suggestions: (limit = 5) =>
     request<UserPublic[]>(`/users/suggestions${query({ limit })}`),
 
@@ -285,16 +311,25 @@ export const api = {
       body: { reference },
     }),
   disconnectChannel: () => request<void>("/channels/me", { method: "DELETE" }),
-  testChannel: () => request<{ message: string }>("/channels/me/test", { method: "POST" }),
+  testChannel: () =>
+    request<{ message: string }>("/channels/me/test", { method: "POST" }),
 
   userPulses: (username: string, p: PageQuery = {}) =>
-    request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/pulses${query({ ...p })}`),
+    request<Page<Pulse>>(
+      `/users/${encodeURIComponent(username)}/pulses${query({ ...p })}`,
+    ),
   userReplies: (username: string, p: PageQuery = {}) =>
-    request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/replies${query({ ...p })}`),
+    request<Page<Pulse>>(
+      `/users/${encodeURIComponent(username)}/replies${query({ ...p })}`,
+    ),
   userMedia: (username: string, p: PageQuery = {}) =>
-    request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/media${query({ ...p })}`),
+    request<Page<Pulse>>(
+      `/users/${encodeURIComponent(username)}/media${query({ ...p })}`,
+    ),
   userLikes: (username: string, p: PageQuery = {}) =>
-    request<Page<Pulse>>(`/users/${encodeURIComponent(username)}/likes${query({ ...p })}`),
+    request<Page<Pulse>>(
+      `/users/${encodeURIComponent(username)}/likes${query({ ...p })}`,
+    ),
   followers: (username: string, p: PageQuery = {}) =>
     request<Page<UserPublic>>(
       `/users/${encodeURIComponent(username)}/followers${query({ ...p })}`,
@@ -321,6 +356,17 @@ export const api = {
     request<{ count: number }>(`/notifications/read-all${query({ tab })}`, {
       method: "POST",
     }),
+
+  // --- sharing ------------------------------------------------------------
+  /** Hand up a rendered card and get back something Telegram will let us share. */
+  sharePulseCard: (pulseId: number, card: Blob) => {
+    const form = new FormData();
+    form.append("file", new File([card], "pulse.jpg", { type: "image/jpeg" }));
+    return request<ShareCard>(`/pulses/${pulseId}/share-card`, {
+      method: "POST",
+      body: form,
+    });
+  },
 
   // --- media --------------------------------------------------------------
   uploadImage: (file: File, altText?: string) => {

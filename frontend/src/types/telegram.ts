@@ -47,7 +47,12 @@ export interface TelegramWebApp {
   viewportHeight: number;
   viewportStableHeight: number;
   safeAreaInset?: { top: number; bottom: number; left: number; right: number };
-  contentSafeAreaInset?: { top: number; bottom: number; left: number; right: number };
+  contentSafeAreaInset?: {
+    top: number;
+    bottom: number;
+    left: number;
+    right: number;
+  };
 
   ready: () => void;
   expand: () => void;
@@ -65,9 +70,17 @@ export interface TelegramWebApp {
   openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
   openTelegramLink: (url: string) => void;
   shareToStory?: (mediaUrl: string, params?: Record<string, unknown>) => void;
+  /** Bot API 8.0: opens the native chat picker for a prepared message. */
+  shareMessage?: (
+    preparedMessageId: string,
+    callback?: (sent: boolean) => void,
+  ) => void;
 
   showAlert: (message: string, callback?: () => void) => void;
-  showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
+  showConfirm: (
+    message: string,
+    callback?: (confirmed: boolean) => void,
+  ) => void;
   showPopup?: (
     params: {
       title?: string;
@@ -108,14 +121,23 @@ export interface TelegramWebApp {
   };
 
   HapticFeedback: {
-    impactOccurred: (style: "light" | "medium" | "heavy" | "rigid" | "soft") => void;
+    impactOccurred: (
+      style: "light" | "medium" | "heavy" | "rigid" | "soft",
+    ) => void;
     notificationOccurred: (type: "error" | "success" | "warning") => void;
     selectionChanged: () => void;
   };
 
   CloudStorage?: {
-    setItem: (key: string, value: string, cb?: (err: Error | null) => void) => void;
-    getItem: (key: string, cb: (err: Error | null, value: string | null) => void) => void;
+    setItem: (
+      key: string,
+      value: string,
+      cb?: (err: Error | null) => void,
+    ) => void;
+    getItem: (
+      key: string,
+      cb: (err: Error | null, value: string | null) => void,
+    ) => void;
     removeItem: (key: string, cb?: (err: Error | null) => void) => void;
   };
 }
