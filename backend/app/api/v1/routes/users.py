@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter
+from fastapi.responses import FileResponse
 
 from app.api.deps import CurrentUser, DbSession, OptionalUser, Paging
-from app.core.errors import PermissionDeniedError
+from app.core.errors import NotFoundError, PermissionDeniedError
 from app.schemas.common import CountResponse, Message, Page
 from app.schemas.pulse import PulseOut
 from app.schemas.user import (
@@ -15,7 +16,7 @@ from app.schemas.user import (
     UserPublic,
     UserUpdate,
 )
-from app.services import serializers, timelines
+from app.services import avatars, serializers, timelines
 from app.services import users as user_service
 from app.services.visibility import may_view_account
 
@@ -107,6 +108,24 @@ async def follow_suggestions(
 async def read_profile(username: str, db: DbSession, viewer: OptionalUser) -> UserPublic:
     user = await user_service.get_by_username(db, username)
     return await serializers.serialize_user(db, user, viewer.id if viewer else None)
+
+
+@router.get("/{username}/avatar", include_in_schema=False)
+async def read_avatar(username: str, db: DbSession) -> FileResponse:
+    """This account's photo, served from our own origin.
+
+    Unauthenticated on purpose: it is loaded by the browser as an image, which
+    carries no token, and it shows exactly what the profile already shows.
+    """
+    user = await user_service.get_by_username(db, username)
+    path = await avatars.local_copy(user)
+    if path is None:
+        raise NotFoundError("That account has no photo.")
+    return FileResponse(
+        path,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
 
 
 @router.post("/{username}/follow", response_model=Message)

@@ -358,6 +358,15 @@ export const api = {
     }),
 
   // --- sharing ------------------------------------------------------------
+  /**
+   * This account's photo, served from our own origin.
+   *
+   * Telegram's copy cannot be read back out of a canvas, so anything that
+   * draws a picture has to come through here instead.
+   */
+  avatarSource: (username: string) =>
+    `${BASE_URL}/users/${encodeURIComponent(username)}/avatar`,
+
   /** Hand up a rendered card and get back something Telegram will let us share. */
   sharePulseCard: (pulseId: number, card: Blob) => {
     const form = new FormData();

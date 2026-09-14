@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import {
   CARD_WIDTH,
   ShareCard,
+  loadAvatar,
   renderShareCard,
 } from "@/components/pulse/share-card";
 import {
@@ -59,6 +60,19 @@ interface Props {
 export function ShareSheet({ pulse, open, onOpenChange }: Props) {
   const cardRef = React.useRef<HTMLDivElement>(null);
   const [busy, setBusy] = React.useState(false);
+  const [avatar, setAvatar] = React.useState<string | null>(null);
+
+  // Fetched as the sheet opens, so it is in the card before anyone taps.
+  React.useEffect(() => {
+    if (!open || !pulse.author.avatar_url) return;
+    let cancelled = false;
+    void loadAvatar(pulse.author.username).then((data) => {
+      if (!cancelled) setAvatar(data);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, pulse.author.avatar_url, pulse.author.username]);
 
   const link = pulseLink(pulse.id);
 
@@ -160,7 +174,7 @@ export function ShareSheet({ pulse, open, onOpenChange }: Props) {
           className="pointer-events-none fixed left-[-9999px] top-0"
           style={{ width: CARD_WIDTH }}
         >
-          <ShareCard ref={cardRef} pulse={pulse} />
+          <ShareCard ref={cardRef} pulse={pulse} avatar={avatar} />
         </div>
       </DialogContent>
     </Dialog>
