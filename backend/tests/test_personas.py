@@ -524,9 +524,7 @@ async def test_a_turn_survives_a_rollback_earlier_in_it(
     assert pulse is not None and pulse.content == "Generated text"
 
 
-async def test_a_tick_does_nothing_while_generation_is_off(
-    db, model, monkeypatch
-) -> None:
+async def test_a_tick_does_nothing_while_generation_is_off(db, model, monkeypatch) -> None:
     """Every caller is covered, including run-once, not just the worker loop."""
     from app.workers.personas import tick
 
