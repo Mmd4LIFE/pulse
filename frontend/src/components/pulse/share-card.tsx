@@ -107,11 +107,19 @@ export const ShareCard = React.forwardRef<HTMLDivElement, { pulse: Pulse }>(
   },
 );
 
-function Stat({ value, label }: { value: number; label: string }) {
+function Stat({
+  value,
+  one,
+  many,
+}: {
+  value: number;
+  one: string;
+  many: string;
+}) {
   return (
     <span>
       <span className="font-bold text-[#0f1419]">{compactNumber(value)}</span>{" "}
-      {label}
+      {value === 1 ? one : many}
     </span>
   );
 }
