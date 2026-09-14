@@ -13,16 +13,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Composer } from "@/components/pulse/composer";
 import { PulseCard } from "@/components/pulse/pulse-card";
 import { PulseSkeleton } from "@/components/pulse/pulse-skeleton";
-import { UserAvatar } from "@/components/pulse/user-avatar";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { compactNumber } from "@/lib/utils";
-import { useAuth } from "@/providers/auth-provider";
 
 export default function ThreadPage() {
   const params = useParams<{ id: string }>();
   const id = Number(params.id);
-  const { user } = useAuth();
   const [replying, setReplying] = React.useState(false);
 
   const thread = useQuery({
@@ -63,17 +60,6 @@ export default function ThreadPage() {
 
       <EngagementBar pulse={pulse} />
 
-      <button
-        type="button"
-        onClick={() => setReplying(true)}
-        className="surface mx-3 mb-3 flex w-full items-center gap-3 px-4 py-3.5 text-left transition-colors hover:bg-accent/30"
-      >
-        {user ? <UserAvatar user={user} className="h-9 w-9" linked={false} /> : null}
-        <span className="text-base text-muted-foreground">
-          Reply to @{pulse.author.username}
-        </span>
-      </button>
-
       {replies.length > 0 ? (
         replies.map((reply) => <PulseCard key={reply.id} pulse={reply} />)
       ) : (
@@ -99,27 +85,17 @@ export default function ThreadPage() {
   );
 }
 
-function EngagementBar({
-  pulse,
-}: {
-  pulse: { like_count: number; repulse_count: number; quote_count: number; view_count: number };
-}) {
-  const stats = [
-    { label: "Repulses", value: pulse.repulse_count },
-    { label: "Quotes", value: pulse.quote_count },
-    { label: "Likes", value: pulse.like_count },
-  ].filter((stat) => stat.value > 0);
-
-  if (stats.length === 0) return null;
+function EngagementBar({ pulse }: { pulse: { quote_count: number } }) {
+  if (pulse.quote_count === 0) return null;
 
   return (
-    <div className="surface mx-3 mb-3 flex flex-wrap gap-x-5 gap-y-1 px-4 py-3 text-sm">
-      {stats.map((stat) => (
-        <span key={stat.label}>
-          <span className="font-bold tabular-nums">{compactNumber(stat.value)}</span>{" "}
-          <span className="text-muted-foreground">{stat.label}</span>
-        </span>
-      ))}
+    <div className="surface mx-3 mb-3 px-4 py-3 text-sm">
+      <span className="font-bold tabular-nums">
+        {compactNumber(pulse.quote_count)}
+      </span>{" "}
+      <span className="text-muted-foreground">
+        {pulse.quote_count === 1 ? "Quote" : "Quotes"}
+      </span>
     </div>
   );
 }
