@@ -13,6 +13,7 @@ import * as React from "react";
 
 import { MediaGrid } from "@/components/pulse/media-grid";
 import { PulseActions } from "@/components/pulse/pulse-actions";
+import { PulseScore } from "@/components/pulse/pulse-score";
 import { PulseText } from "@/components/pulse/pulse-text";
 import { UserAvatar } from "@/components/pulse/user-avatar";
 import { VerifiedBadge } from "@/components/pulse/verified-badge";
@@ -148,6 +149,11 @@ export function PulseCard({
               </div>
             </div>
 
+            <PulseScore
+              pulse={pulse}
+              size={isDetail ? "lg" : "sm"}
+              className={cn("mt-0.5", isDetail && "mt-0")}
+            />
             <PulseMenu pulse={pulse} />
           </header>
 

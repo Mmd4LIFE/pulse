@@ -7,6 +7,7 @@ from app.models.media import Media
 from app.models.notification import Notification, NotificationType
 from app.models.persona import Persona
 from app.models.pulse import Pulse
+from app.models.score import PulseScore, ScoreSource
 from app.models.social import Block, Bookmark, Follow, FollowRequest, Like
 from app.models.user import User
 
@@ -26,5 +27,7 @@ __all__ = [
     "Persona",
     "Pulse",
     "PulseHashtag",
+    "PulseScore",
+    "ScoreSource",
     "User",
 ]

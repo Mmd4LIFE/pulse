@@ -9,6 +9,7 @@ keeps a 30-item feed at a constant number of round trips.
 from __future__ import annotations
 
 from collections.abc import Iterable, Sequence
+from decimal import Decimal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ from app.core.config import settings
 from app.models import Bookmark, Follow, FollowRequest, Like, Media, Pulse, User
 from app.schemas.pulse import MediaOut, PulseOut, PulseRef
 from app.schemas.user import UserPublic, UserSummary
+from app.services import scores as score_service
 
 
 def media_url(item: Media) -> str:
@@ -71,9 +73,9 @@ def to_pulse_ref(pulse: Pulse | None) -> PulseRef | None:
 
 
 class ViewerContext:
-    """The caller's relationship to a specific page of pulses."""
+    """What a specific page of pulses needs beyond the rows themselves."""
 
-    __slots__ = ("bookmarked", "liked", "repulsed", "viewer_id")
+    __slots__ = ("bookmarked", "liked", "repulsed", "scores", "viewer_id")
 
     def __init__(
         self,
@@ -81,20 +83,28 @@ class ViewerContext:
         liked: set[int] | None = None,
         bookmarked: set[int] | None = None,
         repulsed: set[int] | None = None,
+        scores: dict[int, Decimal] | None = None,
     ) -> None:
         self.viewer_id = viewer_id
         self.liked = liked or set()
         self.bookmarked = bookmarked or set()
         self.repulsed = repulsed or set()
+        self.scores = scores or {}
 
 
 async def build_viewer_context(
     db: AsyncSession, viewer_id: int | None, pulse_ids: Sequence[int]
 ) -> ViewerContext:
-    if viewer_id is None or not pulse_ids:
+    if not pulse_ids:
         return ViewerContext(viewer_id)
 
     ids = list(set(pulse_ids))
+
+    # Scores belong to the pulse rather than to the reader, so they are read
+    # even for a signed-out caller.
+    scored = await score_service.for_pulses(db, ids)
+    if viewer_id is None:
+        return ViewerContext(viewer_id, scores=scored)
 
     liked = set(
         (
@@ -125,7 +135,15 @@ async def build_viewer_context(
             )
         ).all()
     )
-    return ViewerContext(viewer_id, liked, bookmarked, repulsed)
+    return ViewerContext(viewer_id, liked, bookmarked, repulsed, scored)
+
+
+def _score_of(pulse: Pulse, ctx: ViewerContext) -> float | None:
+    """A deleted pulse shows no score: there is nothing left to have judged."""
+    if pulse.is_deleted:
+        return None
+    value = ctx.scores.get(pulse.id)
+    return float(value) if value is not None else None
 
 
 def to_pulse_out(
@@ -156,6 +174,7 @@ def to_pulse_out(
         is_mine=ctx.viewer_id is not None and pulse.author_id == ctx.viewer_id,
         repulsed_by=to_user_summary(repulsed_by) if repulsed_by else None,
         sent_to_channel=pulse.sent_to_channel,
+        score=_score_of(pulse, ctx),
     )
 
 

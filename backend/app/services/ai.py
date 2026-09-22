@@ -37,7 +37,18 @@ class Completion:
     tokens: int
 
 
+def has_key() -> bool:
+    """Whether the model can be reached at all."""
+    return bool(settings.OPENAI_API_KEY)
+
+
 def is_configured() -> bool:
+    """Whether the *automated accounts* may generate.
+
+    Narrower than ``has_key``: the account community is switched off
+    separately from the key, and other features -- the Pulse Score -- use the
+    same key while it stays off.
+    """
     return bool(settings.AI_ENABLED and settings.OPENAI_API_KEY)
 
 
@@ -50,10 +61,10 @@ async def complete(
     attempts: int = 2,
 ) -> Completion:
     """Ask the model once, retrying only on failures that might pass."""
-    if not is_configured():
-        raise AiDisabledError(
-            "Generation is off. Set AI_ENABLED and OPENAI_API_KEY to use it."
-        )
+    # Only the key is required here. Whether a given caller is allowed to
+    # generate is that caller's own switch, checked before it gets this far.
+    if not has_key():
+        raise AiDisabledError("No OPENAI_API_KEY is configured.")
 
     payload: dict[str, Any] = {
         "model": settings.OPENAI_MODEL,

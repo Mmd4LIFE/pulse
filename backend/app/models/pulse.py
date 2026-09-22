@@ -36,6 +36,7 @@ from app.db.base import Base, IntPrimaryKey, Timestamped
 
 if TYPE_CHECKING:
     from app.models.media import Media
+    from app.models.score import PulseScore
     from app.models.user import User
 
 
@@ -108,6 +109,11 @@ class Pulse(IntPrimaryKey, Timestamped, Base):
     )
     media: Mapped[list[Media]] = relationship(
         back_populates="pulse", order_by="Media.position", lazy="selectin"
+    )
+    # Not eagerly loaded: a page of pulses reads its scores in one query of its
+    # own, the way the viewer-relative flags are read.
+    scores: Mapped[list[PulseScore]] = relationship(
+        back_populates="pulse", cascade="all, delete-orphan"
     )
 
     __table_args__ = (

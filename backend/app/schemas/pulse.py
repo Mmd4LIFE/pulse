@@ -84,6 +84,10 @@ class PulseOut(ORMModel):
     # Whether this pulse was mirrored into the author's channel.
     sent_to_channel: bool = False
 
+    # The Pulse Score, 0.0 to 10.0. Null means unscored -- it has not happened
+    # yet, or it never will -- which is not the same as a score of zero.
+    score: float | None = None
+
 
 class ThreadOut(BaseModel):
     """A pulse with its ancestors and its immediate replies."""

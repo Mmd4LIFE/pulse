@@ -75,6 +75,8 @@ export interface Pulse {
   is_mine: boolean;
   repulsed_by: UserSummary | null;
   sent_to_channel: boolean;
+  /** The Pulse Score out of 10, or null while it is unscored. */
+  score: number | null;
 }
 
 export interface Thread {

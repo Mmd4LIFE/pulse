@@ -17,15 +17,10 @@ import { toJpeg } from "html-to-image";
 import * as React from "react";
 
 import { PulseMark } from "@/components/layout/pulse-mark";
+import { formatScore } from "@/components/pulse/pulse-score";
 import { api } from "@/lib/api";
 import { detectDirection } from "@/lib/direction";
-import {
-  avatarTone,
-  cn,
-  compactNumber,
-  fullTimestamp,
-  initials,
-} from "@/lib/utils";
+import { avatarTone, cn, fullTimestamp, initials } from "@/lib/utils";
 import type { Pulse } from "@/types/api";
 
 /** CSS pixels. Doubled on export, which stays inside Telegram's photo limits. */
@@ -98,11 +93,24 @@ export const ShareCard = React.forwardRef<
           {fullTimestamp(pulse.created_at)}
         </p>
 
-        <div className="mt-4 flex items-center gap-5 border-t border-[#e6eaf0] pt-4 text-[15px] text-[#5b6b7c]">
-          <Stat value={pulse.reply_count} one="reply" many="replies" />
-          <Stat value={pulse.repulse_count} one="repulse" many="repulses" />
-          <Stat value={pulse.like_count} one="like" many="likes" />
-        </div>
+        {pulse.score === null ? null : (
+          // The score and nothing else. Likes and reposts say how a pulse did
+          // here; a picture sent to someone who has never opened Pulse should
+          // carry what it says about the writing instead.
+          <div className="mt-4 flex items-baseline gap-3 border-t border-[#e6eaf0] pt-4">
+            <span className="flex items-baseline gap-1 text-[#0f1419]">
+              <span className="text-[34px] font-bold leading-none tabular-nums">
+                {formatScore(pulse.score)}
+              </span>
+              <span className="text-[17px] font-semibold text-[#5b6b7c]">
+                /10
+              </span>
+            </span>
+            <span className="text-[14px] font-semibold uppercase tracking-[0.1em] text-[#5b6b7c]">
+              Pulse Score
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex items-center justify-center gap-2 text-[15px] font-semibold text-[#5b6b7c]">
@@ -112,23 +120,6 @@ export const ShareCard = React.forwardRef<
     </div>
   );
 });
-
-function Stat({
-  value,
-  one,
-  many,
-}: {
-  value: number;
-  one: string;
-  many: string;
-}) {
-  return (
-    <span>
-      <span className="font-bold text-[#0f1419]">{compactNumber(value)}</span>{" "}
-      {value === 1 ? one : many}
-    </span>
-  );
-}
 
 /**
  * Fetch an account's photo as a data URL, or nothing if it has none.

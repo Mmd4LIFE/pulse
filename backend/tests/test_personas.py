@@ -343,8 +343,10 @@ async def test_they_obey_the_same_rules_as_anyone_else(
         await ps.write_reply(db, persona, target)
 
 
-async def test_nothing_is_generated_while_the_feature_is_off(db, monkeypatch) -> None:
-    monkeypatch.setattr(ps.ai, "is_configured", lambda: False)
+async def test_the_model_is_not_reached_without_a_key(db, monkeypatch) -> None:
+    # The automated accounts have their own switch, checked by the worker.
+    # This is the floor underneath it: no key, no call, whatever is asked.
+    monkeypatch.setattr(ai.settings, "OPENAI_API_KEY", "")
     with pytest.raises(ai.AiDisabledError):
         await ai.complete("system", "user")
 

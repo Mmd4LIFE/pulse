@@ -11,6 +11,7 @@ from app.schemas.common import Message, Page
 from app.schemas.pulse import PulseCreate, PulseOut, ShareCardOut, ThreadOut
 from app.services import channels as channel_service
 from app.services import pulses as pulse_service
+from app.services import scores as score_service
 from app.services import serializers, share, timelines
 from app.services.visibility import may_view_pulse
 
@@ -38,6 +39,11 @@ async def create_pulse(
     background: BackgroundTasks,
 ) -> PulseOut:
     pulse = await pulse_service.create_pulse(db, user, payload)
+
+    # The score is settled after the response. Posting is never held up by a
+    # model call, and a pulse nobody could score is still a posted pulse.
+    if score_service.is_enabled() and score_service.is_scorable(pulse):
+        background.add_task(score_service.score_in_background, pulse.id)
 
     # Mirroring is opt-in per pulse and runs after the response, so a slow or
     # failing Telegram call never delays or fails the post itself.

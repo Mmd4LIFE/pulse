@@ -94,6 +94,14 @@ class Settings(BaseSettings):
     # How far back an account will look for something to reply to or like.
     AI_TIMELINE_LOOKBACK_HOURS: int = 48
 
+    # --- Pulse Score -------------------------------------------------------
+    # Independent of AI_ENABLED, which governs the automated accounts: scoring
+    # is a feature of the app itself and needs only a key.
+    SCORE_ENABLED: bool = True
+    # A ceiling on the day's scoring, so a flood of posting cannot run up a
+    # bill. Past it, pulses stay unscored, which the interface allows for.
+    SCORE_MAX_PER_DAY: int = 3000
+
     # --- Domain rules ------------------------------------------------------
     MAX_PULSE_LENGTH: int = 280
     MAX_MEDIA_PER_PULSE: int = 4
